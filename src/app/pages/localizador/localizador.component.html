@@ -1,0 +1,30 @@
+<app-navbar></app-navbar>
+<div class="wrap">
+  <h2>Localizador de trayecto</h2>
+  <form [formGroup]="form" (ngSubmit)="guardarPunto()">
+    <label>Placa del cabezal</label>
+    <input formControlName="placa_cabezal" placeholder="ABC123" />
+    <label>Predio</label>
+    <select formControlName="id_predio">
+      <option [ngValue]="null">Seleccione...</option>
+      <option *ngFor="let p of predios" [ngValue]="p.id_predio">{{p.nombre_predio}}</option>
+    </select>
+    <label>Conductor</label>
+    <select formControlName="id_conductor">
+      <option [ngValue]="null">Seleccione...</option>
+      <option *ngFor="let c of conductores" [ngValue]="c.id_conductor">{{c.nombre}} {{c.apellido}}</option>
+    </select>
+    <label class="check">
+      <input type="checkbox" formControlName="usarJson" />
+      Guardar coordenadas/fecha en formato JSON
+    </label>
+    <button type="submit">Guardar punto</button>
+  </form>
+</div>
+
+  <h3 style="margin-top:16px">Puntos guardados (mock)</h3>
+  <div *ngFor="let it of puntos" class="card" style="margin-top:8px">
+    <div><b>{{it.placa_cabezal}}</b> • Conductor {{it.id_conductor}} • Predio {{it.id_predio}}</div>
+    <div><small>{{it.coordenadas_hora}}</small></div>
+    <div><small>Sesión: {{it.id_sesion}} • {{it.fecha_registro}}</small></div>
+  </div>

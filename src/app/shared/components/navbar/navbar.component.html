@@ -1,0 +1,8 @@
+<nav class="nav">
+  <a routerLink="/">Dashboard</a>
+  <a routerLink="/lector">Lector</a>
+  <a routerLink="/localizador">Localizador</a>
+  <span class="spacer"></span>
+  <app-session-badge></app-session-badge>
+  <button (click)="finalizar()" *ngIf="session.isActive()">Finalizar sesión</button>
+</nav>

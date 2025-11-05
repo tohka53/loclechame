@@ -1,0 +1,1 @@
+{"ast":null,"code":"var DecodedObject = /** @class */function () {\n  function DecodedObject(newPosition) {\n    this.newPosition = newPosition;\n  }\n  DecodedObject.prototype.getNewPosition = function () {\n    return this.newPosition;\n  };\n  return DecodedObject;\n}();\nexport default DecodedObject;","map":null,"metadata":{},"sourceType":"module","externalDependencies":[]}

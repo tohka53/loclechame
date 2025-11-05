@@ -1,0 +1,22 @@
+<app-navbar></app-navbar>
+<div class="wrap">
+  <h2>Lector de códigos</h2>
+  <div class="scan-block">
+    <video id="preview" autoplay muted playsinline></video>
+    <div class="actions">
+      <button (click)="startScan()" [disabled]="scanning">Iniciar escaneo</button>
+      <button (click)="stopScan()" [disabled]="!scanning">Detener</button>
+    </div>
+  </div>
+  <form [formGroup]="form" (ngSubmit)="guardar()">
+    <label>Código de barras</label>
+    <input formControlName="codigo_barra" placeholder="Código detectado o ingresado" />
+    <label>Formato</label>
+    <input formControlName="formato" />
+    <label class="check">
+      <input type="checkbox" formControlName="usarJson" />
+      Guardar coordenadas/fecha en formato JSON
+    </label>
+    <button type="submit">Guardar lectura</button>
+  </form>
+</div>

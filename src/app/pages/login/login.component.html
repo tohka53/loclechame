@@ -1,0 +1,11 @@
+<div class="login-card">
+  <h2>Iniciar sesión</h2>
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <label>Usuario</label>
+    <input formControlName="id_usuario" placeholder="correo/uid/etc" />
+    <label>Token JWT</label>
+    <input formControlName="token_jwt" placeholder="pegue su JWT" />
+    <button [disabled]="loading || form.invalid">Entrar</button>
+    <div class="error" *ngIf="error">{{error}}</div>
+  </form>
+</div>
