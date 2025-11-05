@@ -1,7 +1,6 @@
+// src/app/shared/components/navbar/navbar.component.ts
 import { Component } from '@angular/core';
-import { Router } from '@angular/router';
-import { SessionService } from '../../../core/services/session.service';
-import { AuthService } from '../../../core/services/auth.service';
+import { SessionService } from '../../../core/services/session.service'; // ojo con la ruta
 
 @Component({
   selector: 'app-navbar',
@@ -9,17 +8,9 @@ import { AuthService } from '../../../core/services/auth.service';
   styleUrls: ['./navbar.component.scss']
 })
 export class NavbarComponent {
-  constructor(
-    public session: SessionService,
-    private auth: AuthService,
-    private router: Router
-  ) {}
-  finalizar() {
-    const id = this.session.getIdSesion();
-    if (!id) return;
-    this.auth.finalizarSesion(id).subscribe({
-      next: _ => { this.session.clearSession(); this.router.navigate(['/login']); },
-      error: _ => { this.session.clearSession(); this.router.navigate(['/login']); }
-    });
-  }
+  menuOpen = false;
+  constructor(public session: SessionService) {}
+  toggleMenu(){ this.menuOpen = !this.menuOpen; }
+  closeMenu(){ this.menuOpen = false; }
+  finalizar(){ this.session.finalizarSesion(); }
 }

@@ -1,8 +1,17 @@
 <nav class="nav">
-  <a routerLink="/">Dashboard</a>
-  <a routerLink="/lector">Lector</a>
-  <a routerLink="/localizador">Localizador</a>
-  <span class="spacer"></span>
-  <app-session-badge></app-session-badge>
-  <button (click)="finalizar()" *ngIf="session.isActive()">Finalizar sesión</button>
+  <!-- Logo o título -->
+  <div class="brand" routerLink="/">📍 Loclechame</div>
+
+  <!-- Botón hamburguesa (solo móvil) -->
+  <button class="menu-toggle" (click)="toggleMenu()">☰</button>
+
+  <!-- Menú principal -->
+  <div class="links" [class.open]="menuOpen">
+    <a routerLink="/" routerLinkActive="active" (click)="closeMenu()">Dashboard</a>
+    <a routerLink="/lector" routerLinkActive="active" (click)="closeMenu()">Lector</a>
+    <a routerLink="/localizador" routerLinkActive="active" (click)="closeMenu()">Localizador</a>
+    <span class="spacer"></span>
+    <app-session-badge></app-session-badge>
+    <button (click)="finalizar()" *ngIf="session.isActive()">Finalizar sesión</button>
+  </div>
 </nav>
