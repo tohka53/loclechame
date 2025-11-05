@@ -189,4 +189,35 @@ export class LectorComponent implements OnInit, OnDestroy {
       this.lecturas = (r.data as any[]) || [];
     });
   }
+
+  // dentro de la clase LectorComponent:
+capturas: { codigo: string; formato: string; ts: string }[] = [];
+capturasText = '';
+
+private agregarCaptura(codigo: string, formato: string) {
+  const ts = new Date(); // o usa tu GeolocationService si quieres la hora local exacta
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const tsStr = `${ts.getFullYear()}-${pad(ts.getMonth()+1)}-${pad(ts.getDate())} ${pad(ts.getHours())}:${pad(ts.getMinutes())}:${pad(ts.getSeconds())}`;
+
+  this.capturas.unshift({ codigo, formato, ts: tsStr });
+  // pinta como líneas de texto (última arriba)
+  this.capturasText = this.capturas
+    .map(x => `[${x.ts}] ${x.formato}: ${x.codigo}`)
+    .join('\n');
+}
+
+limpiarCapturas() {
+  this.capturas = [];
+  this.capturasText = '';
+}
+
+async copiarCapturas() {
+  try {
+    await navigator.clipboard.writeText(this.capturasText || '');
+    alert('Lecturas copiadas al portapapeles');
+  } catch {
+    alert('No se pudo copiar. Permite acceso al portapapeles.');
+  }
+}
+
 }

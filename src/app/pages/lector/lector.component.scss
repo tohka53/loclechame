@@ -51,3 +51,33 @@
 label { display:block; margin-top:12px; font-weight:600; }
 input, button { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-top:6px; }
 .check { display:flex; align-items:center; gap:8px; margin-top:12px; }
+.capture-box {
+  position: absolute;
+  left: 12px; right: 12px; bottom: 64px;  /* encima de la bottom-bar */
+  background: rgba(0,0,0,0.55);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 10px;
+  padding: 8px;
+  color: #fff;
+  backdrop-filter: blur(4px);
+
+  label { display:block; font-size: 12px; opacity: .85; margin-bottom: 4px; }
+  textarea {
+    width: 100%;
+    border: 0;
+    border-radius: 6px;
+    padding: 8px;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    resize: none;
+  }
+  .cap-actions {
+    display: flex; gap: 8px; margin-top: 6px;
+  }
+  .btn {
+    flex: 1;
+    border: 0; border-radius: 8px; padding: 8px;
+    background: #118ab2; color: #fff; font-weight: 600;
+  }
+}

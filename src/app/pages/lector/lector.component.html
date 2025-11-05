@@ -29,3 +29,11 @@
     <button type="submit" class="btn primary">Guardar lectura</button>
   </form>
 </div>
+<div class="capture-box">
+  <label>Lecturas (sesión actual)</label>
+  <textarea [value]="capturasText" readonly rows="6"></textarea>
+  <div class="cap-actions">
+    <button class="btn" (click)="limpiarCapturas()">Limpiar</button>
+    <button class="btn" (click)="copiarCapturas()">Copiar</button>
+  </div>
+</div>
