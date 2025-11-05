@@ -1,83 +1,34 @@
 <app-navbar></app-navbar>
 
-<div class="wrap">
-  <h2>Lector de códigos de barras</h2>
-  
-  <div class="scan-block">
-    <div class="video-container">
-      <video id="preview" autoplay muted playsinline></video>
-      <div class="scan-overlay" *ngIf="scanning">
-        <div class="scan-line"></div>
-        <p class="scan-hint">Alinee el código de barras dentro del marco</p>
-      </div>
-    </div>
-    
-    <div class="actions">
-      <button 
-        class="btn-primary" 
-        (click)="startScan()" 
-        [disabled]="scanning">
-        <span *ngIf="!scanning">📷 Iniciar escaneo</span>
-        <span *ngIf="scanning">⏳ Escaneando...</span>
-      </button>
-      <button 
-        class="btn-secondary" 
-        (click)="stopScan()" 
-        [disabled]="!scanning">
-        ⏹ Detener
-      </button>
-    </div>
-    
-    <div class="info-box" *ngIf="!scanning">
-      <p><strong>Formatos soportados:</strong></p>
-      <ul>
-        <li>CODE 128 (incluye Subset A, B, C) ✓</li>
-        <li>CODE 39, CODE 93</li>
-        <li>EAN-13, EAN-8</li>
-        <li>UPC-A, UPC-E</li>
-        <li>QR Code</li>
-      </ul>
-    </div>
+<div class="scanner">
+  <video id="preview" autoplay muted playsinline></video>
+
+  <!-- Guías visuales -->
+  <div class="overlay">
+    <div class="guide"></div>
   </div>
 
+  <!-- Barra fija inferior -->
+  <div class="bottom-bar">
+    <button class="btn primary" (click)="startScan()" [disabled]="scanning">Iniciar cámara</button>
+    <button class="btn" (click)="stopScan()" [disabled]="!scanning">Detener</button>
+  </div>
+</div>
+
+<!-- Form fijo debajo (si quieres ocultarlo en móvil, añade un *ngIf) -->
+<div class="form-wrap">
   <form [formGroup]="form" (ngSubmit)="guardar()">
-    <div class="form-group">
-      <label>Código de barras *</label>
-      <input 
-        formControlName="codigo_barra" 
-        placeholder="Código detectado o ingresado manualmente"
-        class="form-control" />
-      <small class="form-text">El código será capturado automáticamente al escanear</small>
-    </div>
+    <label>Código de barras</label>
+    <input formControlName="codigo_barra" placeholder="Código detectado" />
 
-    <div class="form-group">
-      <label>Formato detectado</label>
-      <input 
-        formControlName="formato" 
-        readonly
-        class="form-control" />
-    </div>
+    <label>Formato</label>
+    <input formControlName="formato" />
 
-    <div class="form-group">
-      <label class="check">
-        <input type="checkbox" formControlName="usarJson" />
-        <span>Guardar coordenadas y fecha en formato JSON</span>
-      </label>
-    </div>
+    <label class="check">
+      <input type="checkbox" formControlName="usarJson" />
+      Guardar coordenadas/fecha en formato JSON
+    </label>
 
-    <button 
-      type="submit" 
-      class="btn-save"
-      [disabled]="form.invalid">
-      💾 Guardar lectura
-    </button>
+    <button type="submit" class="btn primary">Guardar lectura</button>
   </form>
-
-  <div class="lecturas-section" *ngIf="lecturas.length > 0">
-    <h3>Lecturas recientes</h3>
-    <div class="lectura-item" *ngFor="let lec of lecturas">
-      <div class="lectura-codigo">{{ lec.codigo_barra }}</div>
-      <div class="lectura-formato">{{ lec.formato_barcode }}</div>
-    </div>
-  </div>
 </div>
