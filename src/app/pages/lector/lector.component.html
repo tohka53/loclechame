@@ -1,22 +1,83 @@
 <app-navbar></app-navbar>
+
 <div class="wrap">
-  <h2>Lector de códigos</h2>
+  <h2>Lector de códigos de barras</h2>
+  
   <div class="scan-block">
-    <video id="preview" autoplay muted playsinline></video>
+    <div class="video-container">
+      <video id="preview" autoplay muted playsinline></video>
+      <div class="scan-overlay" *ngIf="scanning">
+        <div class="scan-line"></div>
+        <p class="scan-hint">Alinee el código de barras dentro del marco</p>
+      </div>
+    </div>
+    
     <div class="actions">
-      <button (click)="startScan()" [disabled]="scanning">Iniciar escaneo</button>
-      <button (click)="stopScan()" [disabled]="!scanning">Detener</button>
+      <button 
+        class="btn-primary" 
+        (click)="startScan()" 
+        [disabled]="scanning">
+        <span *ngIf="!scanning">📷 Iniciar escaneo</span>
+        <span *ngIf="scanning">⏳ Escaneando...</span>
+      </button>
+      <button 
+        class="btn-secondary" 
+        (click)="stopScan()" 
+        [disabled]="!scanning">
+        ⏹ Detener
+      </button>
+    </div>
+    
+    <div class="info-box" *ngIf="!scanning">
+      <p><strong>Formatos soportados:</strong></p>
+      <ul>
+        <li>CODE 128 (incluye Subset A, B, C) ✓</li>
+        <li>CODE 39, CODE 93</li>
+        <li>EAN-13, EAN-8</li>
+        <li>UPC-A, UPC-E</li>
+        <li>QR Code</li>
+      </ul>
     </div>
   </div>
+
   <form [formGroup]="form" (ngSubmit)="guardar()">
-    <label>Código de barras</label>
-    <input formControlName="codigo_barra" placeholder="Código detectado o ingresado" />
-    <label>Formato</label>
-    <input formControlName="formato" />
-    <label class="check">
-      <input type="checkbox" formControlName="usarJson" />
-      Guardar coordenadas/fecha en formato JSON
-    </label>
-    <button type="submit">Guardar lectura</button>
+    <div class="form-group">
+      <label>Código de barras *</label>
+      <input 
+        formControlName="codigo_barra" 
+        placeholder="Código detectado o ingresado manualmente"
+        class="form-control" />
+      <small class="form-text">El código será capturado automáticamente al escanear</small>
+    </div>
+
+    <div class="form-group">
+      <label>Formato detectado</label>
+      <input 
+        formControlName="formato" 
+        readonly
+        class="form-control" />
+    </div>
+
+    <div class="form-group">
+      <label class="check">
+        <input type="checkbox" formControlName="usarJson" />
+        <span>Guardar coordenadas y fecha en formato JSON</span>
+      </label>
+    </div>
+
+    <button 
+      type="submit" 
+      class="btn-save"
+      [disabled]="form.invalid">
+      💾 Guardar lectura
+    </button>
   </form>
+
+  <div class="lecturas-section" *ngIf="lecturas.length > 0">
+    <h3>Lecturas recientes</h3>
+    <div class="lectura-item" *ngFor="let lec of lecturas">
+      <div class="lectura-codigo">{{ lec.codigo_barra }}</div>
+      <div class="lectura-formato">{{ lec.formato_barcode }}</div>
+    </div>
+  </div>
 </div>
