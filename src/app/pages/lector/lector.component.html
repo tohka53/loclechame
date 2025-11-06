@@ -13,9 +13,19 @@
     <button class="btn primary" (click)="startScan()" [disabled]="scanning">Iniciar cámara</button>
     <button class="btn" (click)="stopScan()" [disabled]="!scanning">Detener</button>
   </div>
+
+  <!-- 🟢 Caja de lecturas en vivo (aparece sobre el video) -->
+  <div class="capture-box">
+    <label>Lecturas (sesión actual)</label>
+    <textarea [value]="capturasText" readonly rows="6"></textarea>
+    <div class="cap-actions">
+      <button class="btn" type="button" (click)="limpiarCapturas()">Limpiar</button>
+      <button class="btn" type="button" (click)="copiarCapturas()">Copiar</button>
+    </div>
+  </div>
 </div>
 
-<!-- Form fijo debajo (si quieres ocultarlo en móvil, añade un *ngIf) -->
+<!-- Form fijo debajo -->
 <div class="form-wrap">
   <form [formGroup]="form" (ngSubmit)="guardar()">
     <label>Código de barras</label>
@@ -24,9 +34,19 @@
     <label>Formato</label>
     <input formControlName="formato" />
 
-   
-
     <button type="submit" class="btn primary">Guardar lectura</button>
   </form>
 </div>
 
+<!-- 🟣 Lecturas ya guardadas (mock / localStorage) -->
+<h3 class="list-title">Lecturas guardadas (mock)</h3>
+<div *ngFor="let it of lecturas" class="card">
+  <div class="row-top">
+    <b>{{ it.codigo_barra }}</b> • {{ it.formato_barcode }}
+  </div>
+  <!-- coordenadas_hora viene como string (JSON); lo mostramos tal cual -->
+  <pre class="mini">{{ it.coordenadas_hora }}</pre>
+  <div class="row-foot">
+    <small>Sesión: {{ it.id_sesion }} • {{ it.fecha_registro }}</small>
+  </div>
+</div>

@@ -61,34 +61,30 @@ export class LocalizadorComponent implements OnInit, OnDestroy {
     this.cache.set(CACHE_KEY, this.form.value);
   }
 
-  async guardarPunto() {
-    if (!this.session.isActive()) return alert('No hay sesión activa');
-    if (this.form.invalid) return;
+ async guardarPunto() {
+  if (!this.session.isActive()) return alert('No hay sesión activa');
+  if (this.form.invalid) return;
 
-    const { lat, lon, ts } = await this.geo.getCurrent();
-    const usarJson = this.form.value.usarJson!;
-    const coordenadas_hora = usarJson
-      ? this.geo.makeJsonString(lat, lon, ts)
-      : this.geo.makeTupleString(lat, lon, ts);
+  const user = this.session.getUsuario() || 'N/D';
+  const meta = await this.geo.getCurrentRich(user);     // <-- meta completo
+  const usarJson = this.form.value.usarJson!;
+  const coordenadas_hora = usarJson
+    ? this.geo.makeJsonString(meta)                     // <-- guardamos JSON con todo
+    : this.geo.makeTupleString(meta.lat, meta.lon, meta.ts);
 
-    this.service.guardarPunto({
-      placa_cabezal: this.form.value.placa_cabezal!,
-      id_predio: Number(this.form.value.id_predio),
-      id_conductor: Number(this.form.value.id_conductor),
-      coordenadas_hora,
-      id_sesion: this.session.getIdSesion()!,
-      estado: 1
-    }).subscribe({
-      next: _ => {
-        alert('Punto guardado');
-        this.cargarPuntos();
-        // si quieres limpiar el borrador después de guardar, descomenta:
-        // this.form.patchValue({ placa_cabezal: '', id_predio: null as any, id_conductor: null as any }, { emitEvent: true });
-        // this.cache.remove(CACHE_KEY);
-      },
-      error: _ => alert('Error al guardar punto')
-    });
-  }
+  this.service.guardarPunto({
+    placa_cabezal: this.form.value.placa_cabezal!,
+    id_predio: Number(this.form.value.id_predio),
+    id_conductor: Number(this.form.value.id_conductor),
+    coordenadas_hora,
+    id_sesion: this.session.getIdSesion()!,
+    estado: 1
+  }).subscribe({
+    next: _ => { alert('Punto guardado'); this.cargarPuntos(); },
+    error: _ => alert('Error al guardar punto')
+  });
+}
+
 
   cargarPuntos() {
     this.service.obtenerPuntos().subscribe(r => {

@@ -4,13 +4,16 @@
   <form [formGroup]="form" (ngSubmit)="submit()">
     <label>Usuario</label>
     <input formControlName="id_usuario" placeholder="correo/uid/etc" />
-     <label>Password</label>
-    <input formControlName="contra" placeholder="*****" />
+
+    <label>Contraseña</label>
+    <input formControlName="contra" type="password" placeholder="••••••" />
+
     
+    <input type="hidden" formControlName="token_jwt" />
 
-  
-
-    <button [disabled]="loading || form.get('id_usuario')?.invalid && form.get('contra')?.invalid" type="submit">
+    <button 
+      type="submit" 
+      [disabled]="loading || form.invalid">
       {{ loading ? 'Ingresando…' : 'Entrar' }}
     </button>
 

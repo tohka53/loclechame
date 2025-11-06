@@ -10,10 +10,10 @@ import { SessionService } from '../../core/services/session.service';
 })
 export class LoginComponent implements OnInit {
 
-  // form con JWT fijo (readonly)
   form = this.fb.group({
     id_usuario: ['', Validators.required],
-    token_jwt: [{ value: '', disabled: true }]  // visible pero solo lectura
+    contra: ['', [Validators.required, Validators.minLength(4)]],
+    token_jwt: [{ value: '', disabled: true }]
   });
 
   loading = false;
@@ -26,7 +26,7 @@ export class LoginComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // si ya hay sesión activa, puedes redirigir
+    // si ya hay sesión activa, muestra el token actual
     if (this.session.isActive()) {
       this.form.get('token_jwt')?.setValue(this.session.getToken() || '');
     }
@@ -35,21 +35,34 @@ export class LoginComponent implements OnInit {
   submit() {
     this.error = null;
     if (this.form.invalid) {
-      this.error = 'Ingresa tu usuario para continuar';
+      this.error = 'Por favor completa usuario y contraseña.';
       return;
     }
+
     this.loading = true;
 
     try {
-      const usuario = this.form.get('id_usuario')!.value!.toString().trim();
-      // crea id_sesion + token aleatorio automáticamente
+      const usuario = this.form.get('id_usuario')!.value!.trim();
+      const contra = this.form.get('contra')!.value!.trim();
+
+      // ejemplo simple de validación (puedes reemplazar con tu backend)
+      if (contra !== '1234' && contra.length < 4) {
+        this.error = 'Contraseña incorrecta.';
+        this.loading = false;
+        return;
+      }
+
+      // genera id_sesion + token aleatorio automáticamente
       this.session.loginMock(usuario);
-      // muestra el JWT generado en la casilla (readonly)
+
+      // muestra el JWT generado
       this.form.get('token_jwt')?.setValue(this.session.getToken() || '');
-      this.router.navigate(['/']); // o a /lector si prefieres
+
+      // redirige a dashboard o lector
+      this.router.navigate(['/lector']);
     } catch (e) {
-      this.error = 'No se pudo iniciar sesión.';
       console.error(e);
+      this.error = 'Error al iniciar sesión.';
     } finally {
       this.loading = false;
     }

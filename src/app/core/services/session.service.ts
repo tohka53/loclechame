@@ -54,13 +54,16 @@ export class SessionService {
 
   /** Utilidad para iniciar sesión rápida (mock) */
   loginMock(usuario: string) {
-    const sess: Session = {
-      id_usuario: usuario,
-      id_sesion: Math.floor(Math.random() * 100000),
-      token_jwt: '',
-    };
-    this.setSession(sess);
-  }
+  const randomToken = Math.random().toString(36).substring(2) + 
+                      Math.random().toString(36).substring(2);
+  const sess = {
+    id_usuario: usuario,
+    id_sesion: Math.floor(Math.random() * 100000),
+    token_jwt: randomToken,
+  };
+  this.setSession(sess);
+}
+
 
   finalizarSesion() {
     this.clearSession();

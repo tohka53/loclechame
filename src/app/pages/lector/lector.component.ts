@@ -12,15 +12,22 @@ import { Result, BarcodeFormat, DecodeHintType } from '@zxing/library';
   styleUrls: ['./lector.component.scss']
 })
 export class LectorComponent implements OnInit, OnDestroy {
+  // Form principal
   form = this.fb.group({
     codigo_barra: ['', Validators.required],
     formato: ['CODE_128', Validators.required],
     usarJson: [true]
   });
 
+  // Estado de UI
   scanning = false;
   lecturas: any[] = [];
 
+  // Caja de lecturas en vivo (debajo de los botones)
+  capturas: { codigo: string; formato: string; ts: string }[] = [];
+  capturasText = '';
+
+  // ZXing
   private codeReader: BrowserMultiFormatReader;
   private controls: IScannerControls | null = null;
   private wakeLock: any = null;
@@ -31,6 +38,7 @@ export class LectorComponent implements OnInit, OnDestroy {
     private service: LectorService,
     private session: SessionService
   ) {
+    // Hints: prioriza CODE_128 pero permite otros formatos
     const hints = new Map();
     hints.set(DecodeHintType.POSSIBLE_FORMATS, [
       BarcodeFormat.CODE_128,
@@ -66,68 +74,82 @@ export class LectorComponent implements OnInit, OnDestroy {
   };
 
   /** Pide cámara trasera en móvil; si no, cae a primera cámara disponible */
- async startScan() {
-  try {
-    const constraints: MediaStreamConstraints = {
-      video: {
-        facingMode: { ideal: 'environment' },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-      },
-      audio: false
-    };
+  async startScan() {
+    try {
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: { ideal: 'environment' },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      };
 
-    const video = document.getElementById('preview') as HTMLVideoElement;
+      const video = document.getElementById('preview') as HTMLVideoElement;
 
-    this.controls = await this.codeReader.decodeFromConstraints(
-      constraints,
-      video,
-      (res: Result | undefined) => {
-        if (res) {
-          const formatName = BarcodeFormat[res.getBarcodeFormat()] ?? 'UNKNOWN';
-          this.form.patchValue({ codigo_barra: res.getText(), formato: formatName });
-          this.stopScan(); // quítalo si quieres lectura continua
+      this.controls = await this.codeReader.decodeFromConstraints(
+        constraints,
+        video,
+        async (res: Result | undefined) => {
+          if (res) {
+            const formatName = BarcodeFormat[res.getBarcodeFormat()] ?? 'UNKNOWN';
+            const codigo = res.getText();
+
+            // Pinta en el form
+            this.form.patchValue({ codigo_barra: codigo, formato: formatName });
+
+            // Agrega a la caja con meta (fecha/hora local, tz, user, device, coords)
+            await this.agregarCapturaConMeta(codigo, formatName);
+
+            // Si quieres lectura continua, comenta esta línea:
+            this.stopScan();
+          }
         }
-      }
-    );
+      );
 
-    this.scanning = true;
-    await this.requestWakeLock();
+      this.scanning = true;
+      await this.requestWakeLock();
 
-    // 🔧 Intentar enfoque continuo (opcional y con fallback)
-    setTimeout(async () => {
-      try {
-        const stream = video.srcObject as MediaStream | null;
-        const track = stream?.getVideoTracks?.()[0];
-        if (track?.applyConstraints) {
-          // Algunos navegadores aceptan 'focusMode' vía advanced; otros lo ignoran sin romper.
-          await track.applyConstraints({ advanced: [{ focusMode: 'continuous' as any }] } as any);
+      // Intento de enfoque continuo (opcional)
+      setTimeout(async () => {
+        try {
+          const stream = video.srcObject as MediaStream | null;
+          const track = stream?.getVideoTracks?.()[0];
+          if (track?.applyConstraints) {
+            await track.applyConstraints({ advanced: [{ focusMode: 'continuous' as any }] } as any);
+          }
+        } catch {
+          /* ignorar si no es compatible */
         }
-      } catch {
-        /* ignorar si no es compatible */
-      }
-    }, 400);
+      }, 400);
 
-  } catch (e) {
-    console.error(e);
-    alert('No se pudo iniciar la cámara. Permisos o dispositivo no disponible.');
-    this.scanning = false;
-    this.stopScan();
-    this.releaseWakeLock();
+    } catch (e) {
+      console.error(e);
+      alert('No se pudo iniciar la cámara. Permisos o dispositivo no disponible.');
+      this.scanning = false;
+      this.stopScan();
+      this.releaseWakeLock();
+    }
   }
-}
-
 
   private async switchToDevice(deviceId: string) {
     const video = document.getElementById('preview') as HTMLVideoElement;
     this.controls?.stop();
-    this.controls = await this.codeReader.decodeFromVideoDevice(deviceId, video, (res: Result | undefined) => {
-      if (res) {
-        const formatName = BarcodeFormat[res.getBarcodeFormat()] ?? 'UNKNOWN';
-        this.form.patchValue({ codigo_barra: res.getText(), formato: formatName });
-        this.stopScan();
+    this.controls = await this.codeReader.decodeFromVideoDevice(
+      deviceId,
+      video,
+      async (res: Result | undefined) => {
+        if (res) {
+          const formatName = BarcodeFormat[res.getBarcodeFormat()] ?? 'UNKNOWN';
+          const codigo = res.getText();
+
+          this.form.patchValue({ codigo_barra: codigo, formato: formatName });
+          await this.agregarCapturaConMeta(codigo, formatName);
+
+          this.stopScan();
+        }
       }
-    });
+    );
   }
 
   stopScan() {
@@ -162,15 +184,18 @@ export class LectorComponent implements OnInit, OnDestroy {
     }
   }
 
+  /** Guarda la lectura actual con meta extendido (fecha/hora local, tz, coords, user, device) */
   async guardar() {
     if (!this.session.isActive()) return alert('No hay sesión activa');
     if (this.form.invalid) return;
 
-    const { lat, lon, ts } = await this.geo.getCurrent();
+    const user = this.session.getUsuario() || 'N/D';
+    const meta = await this.geo.getCurrentRich(user);     // <-- meta completo
     const usarJson = this.form.value.usarJson;
+
     const coordenadas_hora = usarJson
-      ? this.geo.makeJsonString(lat, lon, ts)
-      : this.geo.makeTupleString(lat, lon, ts);
+      ? this.geo.makeJsonString(meta)                     // guardamos JSON con todo
+      : this.geo.makeTupleString(meta.lat, meta.lon, meta.ts);
 
     this.service.guardarLectura({
       codigo_barra: this.form.value.codigo_barra!,
@@ -190,34 +215,29 @@ export class LectorComponent implements OnInit, OnDestroy {
     });
   }
 
-  // dentro de la clase LectorComponent:
-capturas: { codigo: string; formato: string; ts: string }[] = [];
-capturasText = '';
-
-private agregarCaptura(codigo: string, formato: string) {
-  const ts = new Date(); // o usa tu GeolocationService si quieres la hora local exacta
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const tsStr = `${ts.getFullYear()}-${pad(ts.getMonth()+1)}-${pad(ts.getDate())} ${pad(ts.getHours())}:${pad(ts.getMinutes())}:${pad(ts.getSeconds())}`;
-
-  this.capturas.unshift({ codigo, formato, ts: tsStr });
-  // pinta como líneas de texto (última arriba)
-  this.capturasText = this.capturas
-    .map(x => `[${x.ts}] ${x.formato}: ${x.codigo}`)
-    .join('\n');
-}
-
-limpiarCapturas() {
-  this.capturas = [];
-  this.capturasText = '';
-}
-
-async copiarCapturas() {
-  try {
-    await navigator.clipboard.writeText(this.capturasText || '');
-    alert('Lecturas copiadas al portapapeles');
-  } catch {
-    alert('No se pudo copiar. Permite acceso al portapapeles.');
+  /** Agrega a la caja en vivo usando meta (fecha/hora local + tz, coords, user, device) */
+  private async agregarCapturaConMeta(codigo: string, formato: string) {
+    const user = this.session.getUsuario() || 'N/D';
+    const meta = await this.geo.getCurrentRich(user);
+    // Mostramos solo timestamp con tz en la caja:
+    const tsFull = `${meta.ts} ${meta.tzOffset}`;
+    this.capturas.unshift({ codigo, formato, ts: tsFull });
+    this.capturasText = this.capturas
+      .map(x => `[${x.ts}] ${x.formato}: ${x.codigo}`)
+      .join('\n');
   }
-}
 
+  limpiarCapturas() {
+    this.capturas = [];
+    this.capturasText = '';
+  }
+
+  async copiarCapturas() {
+    try {
+      await navigator.clipboard.writeText(this.capturasText || '');
+      alert('Lecturas copiadas al portapapeles');
+    } catch {
+      alert('No se pudo copiar. Permite acceso al portapapeles.');
+    }
+  }
 }
