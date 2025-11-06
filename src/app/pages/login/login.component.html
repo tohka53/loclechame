@@ -4,12 +4,13 @@
   <form [formGroup]="form" (ngSubmit)="submit()">
     <label>Usuario</label>
     <input formControlName="id_usuario" placeholder="correo/uid/etc" />
+     <label>Contrasena</label>
+    <input formControlName="contra" placeholder="*****" />
+    
 
-    <!-- La casilla JWT permanece SIEMPRE en el mismo lugar y no se mueve -->
-    <label>Token JWT (auto)</label>
-    <input formControlName="token_jwt" placeholder="se generará automáticamente" readonly />
+  
 
-    <button [disabled]="loading || form.get('id_usuario')?.invalid">
+    <button [disabled]="loading || form.get('id_usuario')?.invalid && form.get('contra')?.invalid" type="submit">
       {{ loading ? 'Ingresando…' : 'Entrar' }}
     </button>
 
