@@ -5,6 +5,7 @@ import { LectorService } from '../../core/services/lector.service';
 import { SessionService } from '../../core/services/session.service';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { Result, BarcodeFormat, DecodeHintType } from '@zxing/library';
+import { OfflineQueueService } from 'src/app/core/services/offline-queue.service';
 
 @Component({
   selector: 'app-lector',
@@ -36,7 +37,9 @@ export class LectorComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private geo: GeolocationService,
     private service: LectorService,
-    private session: SessionService
+    private session: SessionService,
+    private offq: OfflineQueueService   // ← aquí
+
   ) {
     // Hints: prioriza CODE_128 pero permite otros formatos
     const hints = new Map();
@@ -185,29 +188,44 @@ export class LectorComponent implements OnInit, OnDestroy {
   }
 
   /** Guarda la lectura actual con meta extendido (fecha/hora local, tz, coords, user, device) */
+
+  /** Guardar lectura con meta extendido + cola offline */
   async guardar() {
     if (!this.session.isActive()) return alert('No hay sesión activa');
     if (this.form.invalid) return;
 
     const user = this.session.getUsuario() || 'N/D';
-    const meta = await this.geo.getCurrentRich(user);     // <-- meta completo
-    const usarJson = this.form.value.usarJson;
+    const meta = await this.geo.getCurrentRich(user);
+    const coordenadas_hora = this.geo.makeJsonString(meta);
 
-    const coordenadas_hora = usarJson
-      ? this.geo.makeJsonString(meta)                     // guardamos JSON con todo
-      : this.geo.makeTupleString(meta.lat, meta.lon, meta.ts);
-
-    this.service.guardarLectura({
+    const payload = {
       codigo_barra: this.form.value.codigo_barra!,
       formato_barcode: this.form.value.formato!,
       coordenadas_hora,
       id_sesion: this.session.getIdSesion()!,
       estado: 1
-    }).subscribe({
+    };
+
+    // ⬇️ INYECTA OfflineQueueService en el constructor como `private offq: OfflineQueueService`
+    if (!(navigator.onLine)) {
+      this.offq.enqueueLector(payload);
+      alert('Sin conexión: lectura guardada en cola offline.');
+      return;
+    }
+
+    this.service.guardarLectura(payload).subscribe({
       next: _ => { alert('Lectura guardada'); this.cargarLecturas(); },
-      error: _ => alert('Error guardando lectura')
+      error: err => {
+        if (err?.status === 0) {
+          this.offq.enqueueLector(payload);
+          alert('Problema de red: lectura en cola offline.');
+        } else {
+          alert('Error guardando lectura');
+        }
+      }
     });
   }
+
 
   cargarLecturas() {
     this.service.obtenerLecturas().subscribe(r => {

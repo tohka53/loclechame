@@ -2,18 +2,25 @@
   <h2>Iniciar sesión</h2>
 
   <form [formGroup]="form" (ngSubmit)="submit()">
+
     <label>Usuario</label>
-    <input formControlName="id_usuario" placeholder="correo/uid/etc" />
+    <input formControlName="id_usuario" placeholder="correo/usuario" />
 
     <label>Contraseña</label>
-    <input formControlName="contra" type="password" placeholder="••••••" />
+    <div class="pass-wrap">
+      <input
+        [type]="showPass ? 'text' : 'password'"
+        formControlName="contra"
+        placeholder="••••••" />
+      <button type="button" class="toggle" (click)="toggleShowPass()">
+        {{ showPass ? 'Ocultar' : 'Ver' }}
+      </button>
+    </div>
 
-    
+    <!-- 🔒 JWT oculto en la UI pero disponible en el form -->
     <input type="hidden" formControlName="token_jwt" />
 
-    <button 
-      type="submit" 
-      [disabled]="loading || form.invalid">
+    <button type="submit" [disabled]="loading || form.invalid">
       {{ loading ? 'Ingresando…' : 'Entrar' }}
     </button>
 

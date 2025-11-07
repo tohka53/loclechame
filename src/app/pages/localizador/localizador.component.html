@@ -28,3 +28,10 @@
     <div><small>{{it.coordenadas_hora}}</small></div>
     <div><small>Sesión: {{it.id_sesion}} • {{it.fecha_registro}}</small></div>
   </div>
+<h3 style="margin-top:16px">Pendientes por sincronizar</h3>
+<div *ngIf="(pendientes?.length || 0) === 0" class="card"><small>No hay pendientes.</small></div>
+<div *ngFor="let it of pendientes" class="card">
+  <div><b>{{it.placa_cabezal}}</b> • Conductor {{it.id_conductor}} • Predio {{it.id_predio}}</div>
+  <div><small>{{it.coordenadas_hora}}</small></div>
+  <div><small>Sesión: {{it.id_sesion}}</small></div>
+</div>
