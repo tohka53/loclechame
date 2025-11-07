@@ -16,4 +16,13 @@ export class CacheService {
   remove(key: string) {
     localStorage.removeItem(key);
   }
+  /** Borra todas las llaves que empiecen con prefijo (ej. 'loclechame_') */
+  clearByPrefix(prefix: string) {
+    const keys = Object.keys(localStorage);
+    keys.forEach(k => { if (k.startsWith(prefix)) localStorage.removeItem(k); });
+  }
+  /** Borra TODO el localStorage (cuidado) */
+  clearAll() {
+    localStorage.clear();
+  }
 }
