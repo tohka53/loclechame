@@ -1,13 +1,13 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import { GeolocationService } from '../../core/services/geolocation.service';
-import { LocalizadorService } from '../../core/services/localizador.service';
-import { SessionService } from '../../core/services/session.service';
-import { CacheService } from '../../core/services/cache.service';
-import { OfflineQueueService } from '../../core/services/offline-queue.service';
 import { Subscription } from 'rxjs';
 
-const CACHE_KEY = 'loclechame_form_localizador_v1';
+import { ApiService } from 'src/app/core/services/api.service';
+import { GeolocationService } from 'src/app/core/services/geolocation.service';
+import { SessionService } from 'src/app/core/services/session.service';
+
+type EstadoRuta = 'INICIO_RUTA' | 'DESCANSO_RUTA' | 'DESPERFECTO_RUTA' | 'FIN_TRAYECTO';
+type EstadoRutaOrSin = EstadoRuta | 'SIN_ESTADO';
 
 @Component({
   selector: 'app-localizador',
@@ -15,99 +15,225 @@ const CACHE_KEY = 'loclechame_form_localizador_v1';
   styleUrls: ['./localizador.component.scss']
 })
 export class LocalizadorComponent implements OnInit, OnDestroy {
+  private subs = new Subscription();
+
+  // --------- Forms ---------
   form = this.fb.group({
     placa_cabezal: ['', Validators.required],
-    id_predio: [null as unknown as number, Validators.required],
-    id_conductor: [null as unknown as number, Validators.required],
-    usarJson: [true]
+    id_predio: [null as number | null, Validators.required],
+    id_conductor: [null as number | null, Validators.required],
+    usarJson: [true],
   });
 
-  predios: any[] = [];
-  conductores: any[] = [];
-  puntos: any[] = [];
-  pendientes: any[] = []; // ← cola offline visible
+  showEstadoModal = false;
+  estadoForm = this.fb.group({
+    estado: ['INICIO_RUTA' as EstadoRuta, Validators.required],
+    notas: ['']
+  });
 
-  private subs = new Subscription();
+  // --------- Catálogos / listas ---------
+  predios: Array<{ id_predio: number; nombre_predio: string }> = [];
+  conductores: Array<{ id_conductor: number; nombre: string; apellido: string }> = [];
+  puntos: any[] = [];
+
+  // 👇 NECESARIA porque tu HTML muestra “Pendientes”
+  pendientes: any[] = []; // si no usas cola offline, se queda vacía y no rompe la plantilla
+
+  // --------- UI ---------
+  loading = false;
+
+  estadoRutaLabels: Record<EstadoRutaOrSin, string> = {
+    INICIO_RUTA: 'Inicio de ruta',
+    DESCANSO_RUTA: 'Descanso en ruta',
+    DESPERFECTO_RUTA: 'Desperfecto en ruta',
+    FIN_TRAYECTO: 'Fin de trayecto',
+    SIN_ESTADO: 'Sin estado'
+  };
 
   constructor(
     private fb: FormBuilder,
+    private api: ApiService,
     private geo: GeolocationService,
-    private service: LocalizadorService,
-    private session: SessionService,
-    private cache: CacheService,
-    private offq: OfflineQueueService
+    public session: SessionService,
   ) {}
 
   ngOnInit(): void {
-    const draft = this.cache.get(CACHE_KEY, null as any);
-    if (draft) this.form.patchValue(draft, { emitEvent: false });
-
-    let t: any;
+    // Catálogos
     this.subs.add(
-      this.form.valueChanges.subscribe(v => {
-        clearTimeout(t);
-        t = setTimeout(() => this.cache.set(CACHE_KEY, v), 200);
+      this.api.get('/catalogos/predios').subscribe(res => {
+        if (res?.ok) this.predios = (res.data as any[]) || [];
+      })
+    );
+    this.subs.add(
+      this.api.get('/catalogos/conductores').subscribe(res => {
+        if (res?.ok) this.conductores = (res.data as any[]) || [];
       })
     );
 
-    this.service.obtenerPredios().subscribe(r => this.predios = r.data || []);
-    this.service.obtenerConductores().subscribe(r => this.conductores = r.data || []);
+    // Puntos ya guardados
     this.cargarPuntos();
 
-    // muestra pendientes al entrar y trata de sincronizar si vuelve en línea
-    this.pendientes = this.offq.getPendingLocalizador();
-    this.offq.flushAll();
+    // Si en el futuro agregas cola offline, aquí podrías poblar pendientes.
+    // this.pendientes = this.offlineQueue.getPendingLocalizador();
   }
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
-    this.cache.set(CACHE_KEY, this.form.value);
   }
 
-  async guardarPunto() {
-    if (!this.session.isActive()) return alert('No hay sesión activa');
-    if (this.form.invalid) return;
-
-    const user = this.session.getUsuario() || 'N/D';
-    const meta = await this.geo.getCurrentRich(user);
-    const usarJson = this.form.value.usarJson!;
-    const coordenadas_hora = usarJson
-      ? this.geo.makeJsonString(meta)
-      : this.geo.makeTupleString(meta.lat, meta.lon, meta.ts);
-
-    const payload = {
-      placa_cabezal: this.form.value.placa_cabezal!,
-      id_predio: Number(this.form.value.id_predio),
-      id_conductor: Number(this.form.value.id_conductor),
-      coordenadas_hora,
-      id_sesion: this.session.getIdSesion()!,
-      estado: 1
-    };
-
-    if (!this.offq.isOnline()) {
-      this.offq.enqueueLocalizador(payload);
-      this.pendientes = this.offq.getPendingLocalizador();
-      alert('Sin conexión: punto guardado en cola offline.');
+  // ===================== Modal =====================
+  preGuardar() {
+    if (!this.session?.isActive?.()) {
+      alert('No hay sesión activa.');
       return;
     }
-
-    this.service.guardarPunto(payload).subscribe({
-      next: _ => { alert('Punto guardado'); this.cargarPuntos(); },
-      error: err => {
-        if (err?.status === 0) { // error de red
-          this.offq.enqueueLocalizador(payload);
-          this.pendientes = this.offq.getPendingLocalizador();
-          alert('Problema de red: punto en cola offline.');
-        } else {
-          alert('Error al guardar punto');
-        }
-      }
-    });
+    if (this.form.invalid) {
+      this.form.markAllAsTouched();
+      return;
+    }
+    this.showEstadoModal = true;
   }
 
-  cargarPuntos() {
-    this.service.obtenerPuntos().subscribe(r => {
-      this.puntos = (r.data as any[]) || [];
-    });
+  cancelarEstadoModal() {
+    this.showEstadoModal = false;
+  }
+
+  async confirmarEstado() {
+    if (this.estadoForm.invalid) return;
+    this.showEstadoModal = false;
+
+    const estado = this.estadoForm.value.estado as EstadoRuta;
+    const notas = (this.estadoForm.value.notas || '').trim() || null;
+
+    await this.guardarPuntoConEstado(estado, notas);
+    this.estadoForm.patchValue({ notas: '' });
+  }
+
+  // ===================== Guardado =====================
+  private async guardarPuntoConEstado(estado: EstadoRuta, notas: string | null) {
+    try {
+      this.loading = true;
+
+      const coords = await this.snapshotCoords();
+      const usarJson = !!this.form.value.usarJson;
+
+      const coordenadas_hora = usarJson
+        ? JSON.stringify({
+            lat: coords.lat,
+            lng: coords.lng,
+            accuracy: coords.accuracy ?? undefined,
+            ts: coords.ts,
+            estado_ruta: estado,
+            notas_ruta: notas || undefined
+          })
+        : `${coords.lat},${coords.lng} @ ${coords.ts}`;
+
+      // ✅ FIX: no uses getId(); intenta getIdSesion() o getSession()?.id_sesion
+      const idSesion =
+        (this.session as any)?.getIdSesion?.() ||
+        (this.session as any)?.getSession?.()?.id_sesion ||
+        'local';
+
+      const payload: any = {
+        placa_cabezal: this.form.value.placa_cabezal!,
+        id_predio: Number(this.form.value.id_predio),
+        id_conductor: Number(this.form.value.id_conductor),
+        coordenadas_hora,
+        estado_ruta: estado,
+        notas_ruta: notas || undefined,
+        lat: coords.lat,
+        lng: coords.lng,
+        accuracy: coords.accuracy ?? undefined,
+        id_sesion: idSesion,
+      };
+
+      this.subs.add(
+        this.api.post('/localizador', payload).subscribe({
+          next: (res) => {
+            if (res?.ok) {
+              const row = res.data ?? payload;
+              this.puntos = [row, ...this.puntos];
+            } else {
+              alert(res?.message || 'No se pudo guardar el punto.');
+            }
+          },
+          error: () => alert('Error al guardar el punto.'),
+          complete: () => (this.loading = false),
+        })
+      );
+    } catch (e) {
+      console.error(e);
+      this.loading = false;
+      alert('No se pudieron obtener coordenadas.');
+    }
+  }
+
+  // ===================== Data =====================
+  private cargarPuntos() {
+    this.subs.add(
+      this.api.get('/localizador').subscribe(res => {
+        if (res?.ok) this.puntos = (res.data as any[]) || [];
+      })
+    );
+  }
+
+  // ===================== GEO =====================
+  private async snapshotCoords(): Promise<{
+    lat: number | null;
+    lng: number | null;
+    accuracy?: number | null;
+    ts: string;
+  }> {
+    try {
+      const pos: any =
+        (this.geo as any)?.getCurrentPosition
+          ? await (this.geo as any).getCurrentPosition()
+          : (this.geo as any)?.getPosition
+          ? await (this.geo as any).getPosition()
+          : null;
+
+      if (pos) {
+        const coords = pos.coords || pos;
+        const ts =
+          typeof pos.timestamp === 'number'
+            ? new Date(pos.timestamp).toISOString()
+            : pos.timestamp || new Date().toISOString();
+
+        return {
+          lat: coords.latitude ?? coords.lat ?? null,
+          lng: coords.longitude ?? coords.lng ?? null,
+          accuracy: coords.accuracy ?? null,
+          ts,
+        };
+      }
+    } catch {}
+
+    if (typeof navigator !== 'undefined' && navigator.geolocation?.getCurrentPosition) {
+      const navPos: GeolocationPosition = await new Promise((resolve, reject) =>
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+          enableHighAccuracy: true,
+          maximumAge: 0,
+          timeout: 15000
+        })
+      );
+      return {
+        lat: navPos.coords.latitude,
+        lng: navPos.coords.longitude,
+        accuracy: navPos.coords.accuracy,
+        ts: new Date(navPos.timestamp).toISOString()
+      };
+    }
+
+    return {
+      lat: null,
+      lng: null,
+      accuracy: null,
+      ts: new Date().toISOString()
+    };
+  }
+
+  get estadoActualLabel(): string {
+    const v = (this.estadoForm.value.estado as EstadoRuta) || 'SIN_ESTADO';
+    return this.estadoRutaLabels[v];
   }
 }

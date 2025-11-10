@@ -1,1 +1,166 @@
+/* Backdrop y contenedor */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45); /* slate-900/45 */
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
 
+.modal {
+  width: min(640px, 92vw);
+  background: #fff;
+  border-radius: 16px;
+  padding: 24px 28px;
+  box-shadow: 0 24px 64px rgba(2, 6, 23, 0.25);
+}
+
+.modal h2 {
+  margin: 0 0 6px 0;
+  font-size: 22px;
+  line-height: 1.2;
+  font-weight: 800;
+  color: #111827; /* gray-900 */
+}
+
+.modal > p {
+  margin: 0 0 16px 0;
+  color: #6b7280; /* gray-500 */
+  font-size: 14px;
+}
+
+/* Fieldset radios */
+.etapa-group {
+  margin-top: 8px;
+  background: #f8fafc;            /* slate-50 */
+  border: 1px solid #e5e7eb;       /* gray-200 */
+  border-radius: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.etapa-group > legend {
+  padding: 0 6px;
+  font-size: 12px;
+  color: #6b7280;                  /* gray-500 */
+}
+
+/* Cada opción radio en grid: [●][texto] */
+.radio {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  column-gap: 12px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color .15s ease, box-shadow .15s ease;
+}
+
+.radio:hover {
+  background: #f1f5f9;             /* slate-100 */
+}
+
+.radio input {
+  margin: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: #0ea5e9;           /* sky-500 (moderno) */
+}
+
+.radio span {
+  font-size: 15px;
+  color: #111827;
+}
+
+/* Textarea y labels */
+.modal label {
+  display: block;
+  margin-top: 14px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: #374151;                  /* gray-700 */
+  font-size: 14px;
+}
+
+.modal textarea {
+  width: 100%;
+  min-height: 84px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-family: inherit;
+  font-size: 14px;
+  resize: vertical;
+  outline: none;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.modal textarea:focus {
+  border-color: #38bdf8;           /* sky-400 */
+  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
+}
+
+/* Acciones del modal: botones al mismo ancho */
+.modal-actions {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.btn {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  color: #111827;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform .05s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+.btn:hover {
+  background: #f8fafc;
+  box-shadow: 0 2px 8px rgba(2, 6, 23, 0.08);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn.primary {
+  background: #059669;             /* emerald-600 */
+  color: #fff;
+  border-color: #059669;
+}
+
+.btn.primary:hover {
+  background: #047857;             /* emerald-700 */
+}
+
+/* Pills (sección de lista) */
+.pill {
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid transparent;
+  display: inline-block;
+}
+
+.pill.INICIO_RUTA      { background:#e6f4ea; color:#137333; border-color:#c8e6cc; }
+.pill.DESCANSO_RUTA    { background:#e9f0fe; color:#174ea6; border-color:#d2dcff; }
+.pill.DESPERFECTO_RUTA { background:#fce8e6; color:#a50e0e; border-color:#f8d7da; }
+.pill.FIN_TRAYECTO     { background:#fff3cd; color:#8a6d3b; border-color:#ffecb5; }
+.pill.SIN_ESTADO       { background:#f1f3f4; color:#444;    border-color:#e0e0e0; }
+
+.row-top { display:flex; align-items:center; gap:8px; flex-wrap: wrap; }

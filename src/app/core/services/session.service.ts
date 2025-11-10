@@ -53,13 +53,25 @@ export class SessionService {
   getIdSesion(): number | null { return this.session?.id_sesion ?? null; }
   getUsuario(): string | null { return this.session?.id_usuario ?? null; }
 
-  /** Cerrar sesión + limpiar formularios/cache/colas */
-  finalizarSesion() {
-    this.clearSession();
-    this.offq.clearQueues();
-    // limpia formularios/estado con prefijo del app (incluye borradores)
-    this.cache.clearByPrefix(PREFIX);
-    // opcional: redirigir
-    window.location.href = '/login';
-  }
+/** Cerrar sesión + limpiar formularios/cache/colas */
+finalizarSesion() {
+  this.clearSession();
+  this.offq.clearQueues();
+
+  // Borra todo lo que lleve tu prefijo de la app
+  this.cache.clearByPrefix('loclechame_');
+
+  // 👇 Además, limpia los datos MOCK que no usan el prefijo
+  ['mock_session','mock_lector','mock_localizador','mock_predios','mock_conductores']
+    .forEach(k => localStorage.removeItem(k));
+
+  // opcional: redirigir
+  window.location.href = '/login';
+
+
+  
+}
+
+
+
 }

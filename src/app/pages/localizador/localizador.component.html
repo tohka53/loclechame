@@ -1,37 +1,116 @@
 <app-navbar></app-navbar>
+
+<!-- 🟣 MODAL PREVIO: Estado de ruta -->
+<div class="modal-backdrop" *ngIf="showEstadoModal">
+  <div class="modal">
+    <h2>Estado del trayecto</h2>
+    <p>Selecciona el estado para esta toma de coordenadas.</p>
+
+    <form [formGroup]="estadoForm" (ngSubmit)="confirmarEstado()">
+      <fieldset class="etapa-group">
+  <legend>Estado</legend>
+
+  <label class="radio">
+    <input type="radio" formControlName="estado" value="INICIO_RUTA" />
+    <span>Inicio de ruta</span>
+  </label>
+
+  <label class="radio">
+    <input type="radio" formControlName="estado" value="DESCANSO_RUTA" />
+    <span>Descanso en ruta</span>
+  </label>
+
+  <label class="radio">
+    <input type="radio" formControlName="estado" value="DESPERFECTO_RUTA" />
+    <span>Desperfecto en ruta</span>
+  </label>
+
+  <label class="radio">
+    <input type="radio" formControlName="estado" value="FIN_TRAYECTO" />
+    <span>Fin de trayecto</span>
+  </label>
+</fieldset>
+  
+
+      <label>Notas (opcional)</label>
+      <textarea formControlName="notas" rows="3" placeholder="Observaciones..."></textarea>
+
+      <div class="modal-actions">
+        <button type="submit" class="btn primary" [disabled]="estadoForm.invalid">
+          Guardar y continuar
+        </button>
+        <button type="button" class="btn" (click)="cancelarEstadoModal()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="wrap">
   <h2>Localizador de trayecto</h2>
-  <form [formGroup]="form" (ngSubmit)="guardarPunto()">
+
+  <!-- ⬇️ Cambiamos el submit para abrir el modal primero -->
+  <form [formGroup]="form" (ngSubmit)="preGuardar()">
     <label>Placa del cabezal</label>
     <input formControlName="placa_cabezal" placeholder="ABC123" />
-    <label>Predio</label>
-    <select formControlName="id_predio">
-      <option [ngValue]="null">Seleccione...</option>
-      <option *ngFor="let p of predios" [ngValue]="p.id_predio">{{p.nombre_predio}}</option>
-    </select>
-    <label>Conductor</label>
-    <select formControlName="id_conductor">
-      <option [ngValue]="null">Seleccione...</option>
-      <option *ngFor="let c of conductores" [ngValue]="c.id_conductor">{{c.nombre}} {{c.apellido}}</option>
-    </select>
+
+  <label>Predio</label>
+<select formControlName="id_predio">
+  <option [ngValue]="null">Seleccione...</option>
+  <option *ngFor="let p of predios" [ngValue]="p.id_predio">{{ p.nombre_predio }}</option>
+</select>
+
+<label>Conductor</label>
+<select formControlName="id_conductor">
+  <option [ngValue]="null">Seleccione...</option>
+  <option *ngFor="let c of conductores" [ngValue]="c.id_conductor">
+    {{ c.nombre }} {{ c.apellido }}
+  </option>
+</select>
+
+
     <label class="check">
       <input type="checkbox" formControlName="usarJson" />
       Guardar coordenadas/fecha en formato JSON
     </label>
+
     <button type="submit">Guardar punto</button>
   </form>
 </div>
 
-  <h3 style="margin-top:16px">Puntos guardados</h3>
-  <div *ngFor="let it of puntos" class="card" style="margin-top:8px">
-    <div><b>{{it.placa_cabezal}}</b> • Conductor {{it.id_conductor}} • Predio {{it.id_predio}}</div>
-    <div><small>{{it.coordenadas_hora}}</small></div>
-    <div><small>Sesión: {{it.id_sesion}} • {{it.fecha_registro}}</small></div>
+<h3 style="margin-top:16px">Puntos guardados</h3>
+<div *ngFor="let it of puntos" class="card" style="margin-top:8px">
+  <div class="row-top">
+    <b>{{it.placa_cabezal}}</b>
+    • Conductor {{it.id_conductor}}
+    • Predio {{it.id_predio}}
+
+    <span class="pill" [ngClass]="it.estado_ruta || 'SIN_ESTADO'">
+      {{ estadoRutaLabels[it.estado_ruta || 'SIN_ESTADO'] }}
+    </span>
   </div>
+
+  <div><small>{{it.coordenadas_hora}}</small></div>
+  <div><small>Sesión: {{it.id_sesion}} • {{it.fecha_registro}}</small></div>
+
+  <div *ngIf="it.notas_ruta">
+    <small><i>Notas:</i> {{it.notas_ruta}}</small>
+  </div>
+</div>
+
 <h3 style="margin-top:16px">Pendientes por sincronizar</h3>
 <div *ngIf="(pendientes?.length || 0) === 0" class="card"><small>No hay pendientes.</small></div>
 <div *ngFor="let it of pendientes" class="card">
-  <div><b>{{it.placa_cabezal}}</b> • Conductor {{it.id_conductor}} • Predio {{it.id_predio}}</div>
+  <div class="row-top">
+    <b>{{it.placa_cabezal}}</b>
+    • Conductor {{it.id_conductor}}
+    • Predio {{it.id_predio}}
+    <span class="pill" [ngClass]="it.estado_ruta || 'SIN_ESTADO'">
+      {{ estadoRutaLabels[it.estado_ruta || 'SIN_ESTADO'] }}
+    </span>
+  </div>
   <div><small>{{it.coordenadas_hora}}</small></div>
   <div><small>Sesión: {{it.id_sesion}}</small></div>
+  <div *ngIf="it.notas_ruta">
+    <small><i>Notas:</i> {{it.notas_ruta}}</small>
+  </div>
 </div>

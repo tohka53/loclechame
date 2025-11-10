@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { SessionService } from '../../core/services/session.service';
+import { CacheService } from '../../core/services/cache.service';
 
 @Component({
   selector: 'app-login',
@@ -24,7 +25,8 @@ export class LoginComponent implements OnInit {
   constructor(
     private fb: FormBuilder,
     private router: Router,
-    public session: SessionService
+    public session: SessionService,
+    private cache: CacheService
   ) {}
 
   ngOnInit(): void {
@@ -56,6 +58,8 @@ export class LoginComponent implements OnInit {
 
       // Crea sesión e inyecta un JWT aleatorio (oculto en UI)
       this.session.loginMock(usuario);
+      this.cache.remove('lector_area_info_v1');
+
       this.form.get('token_jwt')?.setValue(this.session.getToken() || '');
 
       // Redirige (ajusta la ruta si prefieres)
