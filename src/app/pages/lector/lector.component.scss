@@ -1,7 +1,7 @@
 .scanner {
   position: relative;
   width: 100%;
-  height: calc(100vh - 56px); /* descuenta navbar */
+  height: calc(100vh - 56px);
   background: #000;
 }
 
@@ -10,72 +10,52 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;   /* clave para estabilidad visual */
+  object-fit: cover;
   background: #000;
 }
 
-.overlay {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-}
-
-.guide {
-  width: 80%;
-  max-width: 520px;
-  height: 28%;
-  border: 2px dashed rgba(255,255,255,0.75);
+/* Overlay de guía */
+.overlay { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.overlay .guide {
+  width: min(70vmin, 520px);
+  height: min(36vmin, 260px);
+  border: 2px dashed rgba(255,255,255,.55);
   border-radius: 12px;
-  box-shadow: 0 0 0 9999px rgba(0,0,0,0.35) inset;
+  box-shadow: 0 0 0 9999px rgba(0,0,0,.35) inset;
 }
 
+/* Barra inferior */
 .bottom-bar {
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  display: flex; gap: 8px; padding: 10px 12px;
-  background: linear-gradient(to top, rgba(0,0,0,.75), rgba(0,0,0,0));
+  position: absolute; left: 0; right: 0; bottom: 0;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  padding: 10px; background: linear-gradient(180deg, transparent, rgba(0,0,0,.55));
 }
-
 .btn {
-  flex: 1;
-  border: 0; border-radius: 10px; padding: 12px;
-  background: #2a9d8f; color: #fff; font-weight: 600;
+  border: 1px solid rgba(255,255,255,.4);
+  color: #fff; background: rgba(255,255,255,.15);
+  padding: 10px 12px; border-radius: 10px; backdrop-filter: blur(6px);
 }
-.btn.primary { background: #06d6a0; color: #0b132b; }
+.btn.primary { background: #0a7; border-color: #0a7; }
 
-/* 🟢 Caja de lecturas en vivo */
+/* Caja de capturas */
 .capture-box {
-  position: absolute;
-  left: 12px; right: 12px; bottom: 64px; /* por encima de la bottom-bar */
-  background: rgba(0,0,0,0.55);
-  border: 1px solid rgba(255,255,255,0.2);
-  border-radius: 10px;
-  padding: 8px;
-  color: #fff;
-  backdrop-filter: blur(4px);
-
-  label { display:block; font-size: 12px; opacity: .85; margin-bottom: 4px; }
-  textarea {
-    width: 100%;
-    border: 0;
-    border-radius: 6px;
-    padding: 8px;
-    background: rgba(255,255,255,0.1);
-    color: #fff;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    resize: none;
-  }
-  .cap-actions {
-    display: flex; gap: 8px; margin-top: 6px;
-  }
+  position: absolute; right: 10px; top: 10px; width: min(420px, 90vw);
+  background: rgba(255,255,255,.9); border-radius: 12px; padding: 8px; box-shadow: 0 8px 30px rgba(0,0,0,.25);
 }
+.capture-box label { font-weight: 600; display:block; margin-bottom: 6px; }
+.capture-box textarea {
+  width: 100%; border: 1px solid #ddd; border-radius: 8px; padding: 8px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.cap-actions { display:flex; gap:8px; margin-top: 6px; }
 
-/* Bloque del formulario y lista */
+/* Formulario y lista */
 .form-wrap { background: #f7f7fb; padding: 16px; }
 label { display:block; margin-top:12px; font-weight:600; }
 input, button { width:100%; padding:10px; border:1px solid #ccc; border-radius:8px; margin-top:6px; }
+
+.etapa-group { margin-top: 12px; background:#fff; border:1px solid #eee; border-radius:10px; padding:10px 12px; }
+.etapa-group legend { font-weight:700; margin-bottom:4px; }
+.radio { display:inline-flex; align-items:center; gap:6px; margin-right: 16px; }
 
 .list-title { margin: 16px 0 8px; }
 
@@ -85,16 +65,170 @@ input, button { width:100%; padding:10px; border:1px solid #ccc; border-radius:8
   border-radius: 10px;
   padding: 10px 12px;
   margin-bottom: 8px;
-
-  .row-top { margin-bottom: 6px; }
-  .row-foot { color: #6b7280; }
 }
-pre.mini {
-  background: #f8fafc;
-  padding: 8px;
-  border-radius: 6px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 0 0 6px 0;
+.row-top { display:flex; align-items:center; gap:8px; font-size: 15px; }
+.row-foot { color:#666; }
+
+.mini {
+  background:#f9f9fb; border:1px solid #eee; border-radius:8px; padding:8px;
+  font-size: 12px;
+  overflow:auto;
+}
+
+/* Pills por etapa */
+.pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 12px;
+  opacity: .9;
+}
+.pill.INICIO_CARGA { color: #0b7; background:#0b70; }
+.pill.FIN_CARGA    { color: #06c; background:#06c0; }
+.pill.TOMA_LAB     { color: #b50; background:#b500; }
+
+
+/* Barra superior de controles */
+.top-controls {
+  position: sticky;   /* se queda arriba mientras haces scroll */
+  top: 0;
+  z-index: 5;
+  background: #ffffffd9;
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid #eee;
+}
+
+.top-form {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 12px;
+}
+
+.etapa-group {
+  margin: 0;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+
+.etapa-group legend {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 16px;
+}
+/* Modal genérico */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal {
+  background: #fff;
+  border-radius: 14px;
+  padding: 18px 20px;
+  max-width: 420px;
+  width: 90vw;
+  box-shadow: 0 18px 45px rgba(0,0,0,.35);
+}
+
+.modal h2 {
+  margin: 0 0 6px;
+}
+
+.modal p {
+  margin: 0 0 12px;
+  font-size: 0.9rem;
+  color: #555;
+}
+
+.modal label {
+  display: block;
+  margin-top: 10px;
+  font-weight: 600;
+}
+
+.modal input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* Barra superior */
+.top-controls {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #ffffffd9;
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid #eee;
+}
+
+.top-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.top-form {
+  flex: 1;
+}
+
+.area-summary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.area-summary small {
+  color: #444;
+}
+
+.btn.small {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+/* Etapas + pills: ya los puedes tener, pero por si acaso… */
+.etapa-group {
+  margin: 0;
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.etapa-group legend {
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 16px;
 }

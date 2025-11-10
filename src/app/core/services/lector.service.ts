@@ -5,8 +5,12 @@ import { Observable } from 'rxjs';
 
 @Injectable({ providedIn: 'root' })
 export class LectorService {
-  obtenerLecturas(): Observable<ApiResponse> { return this.api.get('/lector'); }
   constructor(private api: ApiService) {}
+
+  obtenerLecturas(): Observable<ApiResponse> {
+    return this.api.get('/lector');
+  }
+
   guardarLectura(payload: LectorPayload): Observable<ApiResponse> {
     return this.api.post('/lector', payload);
   }

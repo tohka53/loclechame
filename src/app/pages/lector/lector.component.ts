@@ -6,6 +6,7 @@ import { SessionService } from '../../core/services/session.service';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { Result, BarcodeFormat, DecodeHintType } from '@zxing/library';
 import { OfflineQueueService } from 'src/app/core/services/offline-queue.service';
+import { EtapaLectura, LectorPayload } from 'src/app/core/models';
 
 @Component({
   selector: 'app-lector',
@@ -13,18 +14,32 @@ import { OfflineQueueService } from 'src/app/core/services/offline-queue.service
   styleUrls: ['./lector.component.scss']
 })
 export class LectorComponent implements OnInit, OnDestroy {
-  // Form principal
+
+  private readonly AREA_INFO_KEY = 'lector_area_info_v1';
+
+  // Form principal (lector)
   form = this.fb.group({
     codigo_barra: ['', Validators.required],
     formato: ['CODE_128', Validators.required],
-    usarJson: [true]
+    usarJson: [true],
+    etapa: ['INICIO_CARGA' as EtapaLectura, Validators.required]
   });
 
-  // Estado de UI
+  // Form del modal (área/usuario)
+  areaForm = this.fb.group({
+    area: ['', Validators.required],
+    usuario: ['', Validators.required]
+  });
+
+  // Estado del modal
+  showAreaModal = false;
+  areaInfo: { area: string; usuario: string } | null = null;
+
+  // Estado de UI lector
   scanning = false;
   lecturas: any[] = [];
 
-  // Caja de lecturas en vivo (debajo de los botones)
+  // Caja de lecturas en vivo
   capturas: { codigo: string; formato: string; ts: string }[] = [];
   capturasText = '';
 
@@ -38,10 +53,8 @@ export class LectorComponent implements OnInit, OnDestroy {
     private geo: GeolocationService,
     private service: LectorService,
     private session: SessionService,
-    private offq: OfflineQueueService   // ← aquí
-
+    private offq: OfflineQueueService
   ) {
-    // Hints: prioriza CODE_128 pero permite otros formatos
     const hints = new Map();
     hints.set(DecodeHintType.POSSIBLE_FORMATS, [
       BarcodeFormat.CODE_128,
@@ -57,9 +70,13 @@ export class LectorComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    this.cargarAreaDesdeStorage();
     this.cargarLecturas();
+
     document.addEventListener('visibilitychange', this.onVisibility, false);
-    addEventListener('orientationchange', () => setTimeout(() => this.restartIfNeeded(), 250));
+    addEventListener('orientationchange', () =>
+      setTimeout(() => this.restartIfNeeded(), 250)
+    );
   }
 
   ngOnDestroy(): void {
@@ -67,6 +84,54 @@ export class LectorComponent implements OnInit, OnDestroy {
     this.stopScan();
     this.releaseWakeLock();
   }
+
+  // ========= Modal Área/Usuario =========
+
+  private cargarAreaDesdeStorage() {
+    const raw = localStorage.getItem(this.AREA_INFO_KEY);
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (parsed?.area && parsed?.usuario) {
+          this.areaInfo = { area: parsed.area, usuario: parsed.usuario };
+          this.areaForm.patchValue(this.areaInfo);
+          this.showAreaModal = false;
+          return;
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Si no hay nada guardado, proponemos el usuario de sesión
+    const user = this.session.getUsuario() || '';
+    this.areaForm.patchValue({ usuario: user });
+    this.showAreaModal = true;
+  }
+
+  abrirAreaModal() {
+    this.showAreaModal = true;
+  }
+
+  cerrarAreaModal() {
+    if (!this.areaInfo) {
+      // Si nunca se ha configurado, obligamos a llenarlo
+      return;
+    }
+    this.showAreaModal = false;
+  }
+
+  confirmarArea() {
+    if (this.areaForm.invalid) return;
+
+    const { area, usuario } = this.areaForm.value;
+    this.areaInfo = {
+      area: area || '',
+      usuario: usuario || ''
+    };
+    localStorage.setItem(this.AREA_INFO_KEY, JSON.stringify(this.areaInfo));
+    this.showAreaModal = false;
+  }
+
+  // ========= Eventos de visibilidad =========
 
   private onVisibility = () => {
     if (document.visibilityState === 'visible') {
@@ -76,8 +141,15 @@ export class LectorComponent implements OnInit, OnDestroy {
     }
   };
 
-  /** Pide cámara trasera en móvil; si no, cae a primera cámara disponible */
+  // ========= Escáner =========
+
   async startScan() {
+    if (!this.areaInfo) {
+      this.showAreaModal = true;
+      alert('Primero seleccione área y usuario de la sesión.');
+      return;
+    }
+
     try {
       const constraints: MediaStreamConstraints = {
         video: {
@@ -98,10 +170,7 @@ export class LectorComponent implements OnInit, OnDestroy {
             const formatName = BarcodeFormat[res.getBarcodeFormat()] ?? 'UNKNOWN';
             const codigo = res.getText();
 
-            // Pinta en el form
             this.form.patchValue({ codigo_barra: codigo, formato: formatName });
-
-            // Agrega a la caja con meta (fecha/hora local, tz, user, device, coords)
             await this.agregarCapturaConMeta(codigo, formatName);
 
             // Si quieres lectura continua, comenta esta línea:
@@ -113,17 +182,17 @@ export class LectorComponent implements OnInit, OnDestroy {
       this.scanning = true;
       await this.requestWakeLock();
 
-      // Intento de enfoque continuo (opcional)
+      // Enfoque continuo (opcional)
       setTimeout(async () => {
         try {
           const stream = video.srcObject as MediaStream | null;
           const track = stream?.getVideoTracks?.()[0];
           if (track?.applyConstraints) {
-            await track.applyConstraints({ advanced: [{ focusMode: 'continuous' as any }] } as any);
+            await track.applyConstraints(
+              { advanced: [{ focusMode: 'continuous' as any }] } as any
+            );
           }
-        } catch {
-          /* ignorar si no es compatible */
-        }
+        } catch { /* ignore */ }
       }, 400);
 
     } catch (e) {
@@ -166,7 +235,6 @@ export class LectorComponent implements OnInit, OnDestroy {
 
   private async requestWakeLock() {
     try {
-      // Screen Wake Lock (no todos los navegadores lo soportan)
       // @ts-ignore
       if ('wakeLock' in navigator && !this.wakeLock) {
         // @ts-ignore
@@ -175,6 +243,7 @@ export class LectorComponent implements OnInit, OnDestroy {
       }
     } catch { /* ignore */ }
   }
+
   private releaseWakeLock() {
     try { this.wakeLock?.release?.(); } catch { /* ignore */ }
     this.wakeLock = null;
@@ -187,34 +256,45 @@ export class LectorComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Guarda la lectura actual con meta extendido (fecha/hora local, tz, coords, user, device) */
+  // ========= Guardar lectura =========
 
-  /** Guardar lectura con meta extendido + cola offline */
   async guardar() {
     if (!this.session.isActive()) return alert('No hay sesión activa');
+
+    if (!this.areaInfo) {
+      this.showAreaModal = true;
+      alert('Primero seleccione área y usuario de la sesión.');
+      return;
+    }
+
     if (this.form.invalid) return;
 
-    const user = this.session.getUsuario() || 'N/D';
+    const user = this.session.getUsuario() || this.areaInfo.usuario || 'N/D';
     const meta = await this.geo.getCurrentRich(user);
     const coordenadas_hora = this.geo.makeJsonString(meta);
 
-    const payload = {
+    const payload: LectorPayload = {
       codigo_barra: this.form.value.codigo_barra!,
       formato_barcode: this.form.value.formato!,
       coordenadas_hora,
       id_sesion: this.session.getIdSesion()!,
-      estado: 1
+      estado: 1,
+      etapa: this.form.value.etapa as EtapaLectura,
+      area: this.areaInfo.area,
+      usuario_registro: this.areaInfo.usuario
     };
 
-    // ⬇️ INYECTA OfflineQueueService en el constructor como `private offq: OfflineQueueService`
-    if (!(navigator.onLine)) {
+    if (!navigator.onLine) {
       this.offq.enqueueLector(payload);
       alert('Sin conexión: lectura guardada en cola offline.');
       return;
     }
 
     this.service.guardarLectura(payload).subscribe({
-      next: _ => { alert('Lectura guardada'); this.cargarLecturas(); },
+      next: _ => {
+        alert('Lectura guardada');
+        this.cargarLecturas();
+      },
       error: err => {
         if (err?.status === 0) {
           this.offq.enqueueLector(payload);
@@ -226,18 +306,17 @@ export class LectorComponent implements OnInit, OnDestroy {
     });
   }
 
-
   cargarLecturas() {
     this.service.obtenerLecturas().subscribe(r => {
       this.lecturas = (r.data as any[]) || [];
     });
   }
 
-  /** Agrega a la caja en vivo usando meta (fecha/hora local + tz, coords, user, device) */
+  // ========= Capturas en vivo =========
+
   private async agregarCapturaConMeta(codigo: string, formato: string) {
-    const user = this.session.getUsuario() || 'N/D';
+    const user = this.session.getUsuario() || this.areaInfo?.usuario || 'N/D';
     const meta = await this.geo.getCurrentRich(user);
-    // Mostramos solo timestamp con tz en la caja:
     const tsFull = `${meta.ts} ${meta.tzOffset}`;
     this.capturas.unshift({ codigo, formato, ts: tsFull });
     this.capturasText = this.capturas

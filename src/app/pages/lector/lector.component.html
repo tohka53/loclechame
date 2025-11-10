@@ -1,5 +1,70 @@
 <app-navbar></app-navbar>
 
+<!-- 🟣 MODAL PREVIO: Área / Usuario -->
+<div class="modal-backdrop" *ngIf="showAreaModal">
+  <div class="modal">
+    <h2>Configuración de sesión</h2>
+    <p>Indica el área a la que pertenece la operación y el usuario/operador.</p>
+
+    <form [formGroup]="areaForm" (ngSubmit)="confirmarArea()">
+      <label>Área</label>
+      <input formControlName="area" placeholder="Ej. Patio Norte, Bodega 3" />
+
+      <label>Usuario / Operador</label>
+      <input formControlName="usuario" placeholder="Ej. mcabrera, Juan Pérez" />
+
+      <div class="modal-actions">
+        <button type="submit" class="btn primary" [disabled]="areaForm.invalid">
+          Guardar y continuar
+        </button>
+        <button
+          type="button"
+          class="btn"
+          (click)="cerrarAreaModal()"
+          [disabled]="!areaInfo"
+        >
+          Cerrar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 🔝 Barra superior: Etapa + botón para cambiar área/usuario -->
+<div class="top-controls">
+  <div class="top-inner">
+    <form [formGroup]="form" class="top-form">
+      <fieldset class="etapa-group">
+        <legend>Etapa</legend>
+
+        <label class="radio">
+          <input type="radio" formControlName="etapa" value="INICIO_CARGA" />
+          Inicio de Carga
+        </label>
+
+        <label class="radio">
+          <input type="radio" formControlName="etapa" value="FIN_CARGA" />
+          Fin de Carga
+        </label>
+
+        <label class="radio">
+          <input type="radio" formControlName="etapa" value="TOMA_LAB" />
+          Toma de Laboratorio
+        </label>
+      </fieldset>
+    </form>
+
+    <div class="area-summary" *ngIf="areaInfo">
+      <small>
+        Área: <b>{{ areaInfo.area }}</b> • Usuario: <b>{{ areaInfo.usuario }}</b>
+      </small>
+      <button type="button" class="btn small" (click)="abrirAreaModal()">
+        Cambiar área/usuario
+      </button>
+    </div>
+  </div>
+</div>
+
 <div class="scanner">
   <video id="preview" autoplay muted playsinline></video>
 
@@ -10,11 +75,15 @@
 
   <!-- Barra fija inferior -->
   <div class="bottom-bar">
-    <button class="btn primary" (click)="startScan()" [disabled]="scanning">Iniciar cámara</button>
-    <button class="btn" (click)="stopScan()" [disabled]="!scanning">Detener</button>
+    <button class="btn primary" (click)="startScan()" [disabled]="scanning">
+      Iniciar cámara
+    </button>
+    <button class="btn" (click)="stopScan()" [disabled]="!scanning">
+      Detener
+    </button>
   </div>
 
-  <!-- 🟢 Caja de lecturas en vivo (aparece sobre el video) -->
+  <!-- 🟢 Caja de lecturas en vivo -->
   <div class="capture-box">
     <label>Lecturas (sesión actual)</label>
     <textarea [value]="capturasText" readonly rows="6"></textarea>
@@ -38,15 +107,28 @@
   </form>
 </div>
 
-<!-- 🟣 Lecturas ya guardadas (mock / localStorage) -->
+<!-- 🟣 Lecturas ya guardadas -->
 <h3 class="list-title">Lecturas guardadas</h3>
 <div *ngFor="let it of lecturas" class="card">
   <div class="row-top">
     <b>{{ it.codigo_barra }}</b> • {{ it.formato_barcode }}
+
+    <span class="pill" [ngClass]="it.etapa">
+      {{ it.etapa === 'INICIO_CARGA' ? 'Inicio de Carga'
+           : it.etapa === 'FIN_CARGA' ? 'Fin de Carga'
+           : it.etapa === 'TOMA_LAB' ? 'Toma de Laboratorio'
+           : (it.etapa || 'Sin etapa') }}
+    </span>
   </div>
-  <!-- coordenadas_hora viene como string (JSON); lo mostramos tal cual -->
+
   <pre class="mini">{{ it.coordenadas_hora }}</pre>
   <div class="row-foot">
-    <small>Sesión: {{ it.id_sesion }} • {{ it.fecha_registro }}</small>
+    <small>
+      Sesión: {{ it.id_sesion }} • {{ it.fecha_registro }}
+      <span *ngIf="it.area || it.usuario_registro">
+        • Área: {{ it.area || 'N/D' }}
+        • Usuario: {{ it.usuario_registro || 'N/D' }}
+      </span>
+    </small>
   </div>
 </div>
