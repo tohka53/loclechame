@@ -5,9 +5,15 @@ import { Subscription } from 'rxjs';
 import { ApiService } from 'src/app/core/services/api.service';
 import { GeolocationService } from 'src/app/core/services/geolocation.service';
 import { SessionService } from 'src/app/core/services/session.service';
+import { CacheService } from 'src/app/core/services/cache.service';
+import { LocalizadorService } from 'src/app/core/services/localizador.service';
+import { JdeService, Unidad, Predio, Piloto } from 'src/app/core/services/jde.service';
 
 type EstadoRuta = 'INICIO_RUTA' | 'DESCANSO_RUTA' | 'DESPERFECTO_RUTA' | 'FIN_TRAYECTO';
 type EstadoRutaOrSin = EstadoRuta | 'SIN_ESTADO';
+
+const CACHE_KEY = 'loclechame_form_localizador_v1';
+const LS_TRANSP = 'loclechame_transportista_code';
 
 @Component({
   selector: 'app-localizador',
@@ -17,29 +23,34 @@ type EstadoRutaOrSin = EstadoRuta | 'SIN_ESTADO';
 export class LocalizadorComponent implements OnInit, OnDestroy {
   private subs = new Subscription();
 
-  // --------- Forms ---------
+  // --------- Forms (ajustados a JDE) ---------
   form = this.fb.group({
-    placa_cabezal: ['', Validators.required],
-    id_predio: [null as number | null, Validators.required],
-    id_conductor: [null as number | null, Validators.required],
+    placa_cabezal: [null as string | null, Validators.required], // código Unidad
+    id_predio: [null as string | null, Validators.required],      // código Predio
+    nombre_piloto: [''],                                          // se llena por API
     usarJson: [true],
   });
 
+  // Modal Estado (tuyo)
   showEstadoModal = false;
   estadoForm = this.fb.group({
     estado: ['INICIO_RUTA' as EstadoRuta, Validators.required],
     notas: ['']
   });
 
-  // --------- Catálogos / listas ---------
-  predios: Array<{ id_predio: number; nombre_predio: string }> = [];
-  conductores: Array<{ id_conductor: number; nombre: string; apellido: string }> = [];
+  // Modal Transportista (nuevo)
+  transportistaForm = this.fb.group({ codigo: ['', Validators.required] });
+  showTransportistaModal = false;
+  loadingApis = false;
+  codTransportista: string | null = null;
+
+  // Catálogos
+  unidades: Unidad[] = [];
+  predios: Predio[] = [];
   puntos: any[] = [];
+  pendientes: any[] = []; // sin cola offline por ahora
 
-  // 👇 NECESARIA porque tu HTML muestra “Pendientes”
-  pendientes: any[] = []; // si no usas cola offline, se queda vacía y no rompe la plantilla
-
-  // --------- UI ---------
+  // UI
   loading = false;
 
   estadoRutaLabels: Record<EstadoRutaOrSin, string> = {
@@ -54,34 +65,43 @@ export class LocalizadorComponent implements OnInit, OnDestroy {
     private fb: FormBuilder,
     private api: ApiService,
     private geo: GeolocationService,
+    private cache: CacheService,
+    private locSvc: LocalizadorService,
+    private jde: JdeService,
     public session: SessionService,
   ) {}
 
   ngOnInit(): void {
-    // Catálogos
+    // Restaurar formulario (✅ FIX: fallback requerido)
+    const cached = this.cache.get(CACHE_KEY, null as any);
+    if (cached) this.form.patchValue(cached);
+    this.subs.add(this.form.valueChanges.subscribe(v => this.cache.set(CACHE_KEY, v)));
+
+    // Transportista guardado?
+    const last = localStorage.getItem(LS_TRANSP);
+    if (last) {
+      this.codTransportista = last;
+      this.cargarCatalogosDesdeJDE(last);
+    } else {
+      this.showTransportistaModal = true;
+    }
+
+    // Cambia placa → cargar piloto
     this.subs.add(
-      this.api.get('/catalogos/predios').subscribe(res => {
-        if (res?.ok) this.predios = (res.data as any[]) || [];
-      })
-    );
-    this.subs.add(
-      this.api.get('/catalogos/conductores').subscribe(res => {
-        if (res?.ok) this.conductores = (res.data as any[]) || [];
+      this.form.get('placa_cabezal')!.valueChanges.subscribe(val => {
+        if (val) this.cargarPiloto(String(val));
+        else this.form.get('nombre_piloto')!.setValue('');
       })
     );
 
-    // Puntos ya guardados
     this.cargarPuntos();
-
-    // Si en el futuro agregas cola offline, aquí podrías poblar pendientes.
-    // this.pendientes = this.offlineQueue.getPendingLocalizador();
   }
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
   }
 
-  // ===================== Modal =====================
+  // ===== Modal Estado (tuyo) =====
   preGuardar() {
     if (!this.session?.isActive?.()) {
       alert('No hay sesión activa.');
@@ -94,41 +114,76 @@ export class LocalizadorComponent implements OnInit, OnDestroy {
     this.showEstadoModal = true;
   }
 
-  cancelarEstadoModal() {
-    this.showEstadoModal = false;
-  }
+  cancelarEstadoModal() { this.showEstadoModal = false; }
 
   async confirmarEstado() {
     if (this.estadoForm.invalid) return;
     this.showEstadoModal = false;
-
     const estado = this.estadoForm.value.estado as EstadoRuta;
     const notas = (this.estadoForm.value.notas || '').trim() || null;
-
     await this.guardarPuntoConEstado(estado, notas);
     this.estadoForm.patchValue({ notas: '' });
   }
 
-  // ===================== Guardado =====================
+  // ===== Modal Transportista (nuevo) =====
+  abrirModalTransportista() {
+    this.transportistaForm.reset({ codigo: this.codTransportista || '' });
+    this.showTransportistaModal = true;
+  }
+
+  confirmarTransportista() {
+    if (this.transportistaForm.invalid) return;
+    const code = this.transportistaForm.value.codigo!.trim();
+    this.loadingApis = true;
+    this.cargarCatalogosDesdeJDE(code, () => {
+      this.loadingApis = false;
+      this.showTransportistaModal = false;
+      this.codTransportista = code;
+      localStorage.setItem(LS_TRANSP, code);
+    }, () => {
+      this.loadingApis = false;
+      alert('No fue posible cargar catálogos desde JDE. Verifica el código o tu red.');
+    });
+  }
+
+  private cargarCatalogosDesdeJDE(code: string, ok?: () => void, fail?: (e:any)=>void) {
+    const s1 = this.jde.getPrediosPorTransportista(code).subscribe({
+      next: pred => { this.predios = pred; },
+      error: e => fail?.(e)
+    });
+    const s2 = this.jde.getUnidadesPorTransportista(code).subscribe({
+      next: uds => { this.unidades = uds; ok?.(); },
+      error: e => fail?.(e)
+    });
+    this.subs.add(s1); this.subs.add(s2);
+  }
+
+  private cargarPiloto(codigoUnidad: string) {
+    const sub = this.jde.getPilotoPorUnidad(codigoUnidad).subscribe({
+      next: (p: Piloto | null) => {
+        this.form.get('nombre_piloto')!.setValue(p?.staffName || '');
+      },
+      error: () => this.form.get('nombre_piloto')!.setValue('')
+    });
+    this.subs.add(sub);
+  }
+
+  // ===== Guardado =====
   private async guardarPuntoConEstado(estado: EstadoRuta, notas: string | null) {
     try {
       this.loading = true;
 
-      const coords = await this.snapshotCoords();
+      // ✅ FIX: usar tu servicio real
+      const pos = await this.geo.getCurrent().catch(() => null);
+      const lat = pos?.lat ?? null;
+      const lng = pos?.lon ?? null;
+      const ts  = pos?.ts  ?? new Date().toISOString();
+
       const usarJson = !!this.form.value.usarJson;
-
       const coordenadas_hora = usarJson
-        ? JSON.stringify({
-            lat: coords.lat,
-            lng: coords.lng,
-            accuracy: coords.accuracy ?? undefined,
-            ts: coords.ts,
-            estado_ruta: estado,
-            notas_ruta: notas || undefined
-          })
-        : `${coords.lat},${coords.lng} @ ${coords.ts}`;
+        ? JSON.stringify({ lat, lng, ts, estado_ruta: estado, notas_ruta: notas || undefined })
+        : `${lat},${lng} @ ${ts}`;
 
-      // ✅ FIX: no uses getId(); intenta getIdSesion() o getSession()?.id_sesion
       const idSesion =
         (this.session as any)?.getIdSesion?.() ||
         (this.session as any)?.getSession?.()?.id_sesion ||
@@ -136,23 +191,23 @@ export class LocalizadorComponent implements OnInit, OnDestroy {
 
       const payload: any = {
         placa_cabezal: this.form.value.placa_cabezal!,
-        id_predio: Number(this.form.value.id_predio),
-        id_conductor: Number(this.form.value.id_conductor),
+        id_predio: this.form.value.id_predio!,         // código de predio JDE
+        nombre_piloto: this.form.value.nombre_piloto || null,
         coordenadas_hora,
         estado_ruta: estado,
         notas_ruta: notas || undefined,
-        lat: coords.lat,
-        lng: coords.lng,
-        accuracy: coords.accuracy ?? undefined,
+        lat, lng,
         id_sesion: idSesion,
       };
 
       this.subs.add(
-        this.api.post('/localizador', payload).subscribe({
+        this.locSvc.guardarPunto(payload).subscribe({
           next: (res) => {
             if (res?.ok) {
               const row = res.data ?? payload;
               this.puntos = [row, ...this.puntos];
+              // limpiar selects (mantengo transportista seleccionado)
+              this.form.patchValue({ placa_cabezal: null, id_predio: null, nombre_piloto: '' });
             } else {
               alert(res?.message || 'No se pudo guardar el punto.');
             }
@@ -168,70 +223,16 @@ export class LocalizadorComponent implements OnInit, OnDestroy {
     }
   }
 
-  // ===================== Data =====================
+  // ===== Data =====
   private cargarPuntos() {
     this.subs.add(
-      this.api.get('/localizador').subscribe(res => {
+      this.locSvc.obtenerPuntos().subscribe(res => {
         if (res?.ok) this.puntos = (res.data as any[]) || [];
       })
     );
   }
 
-  // ===================== GEO =====================
-  private async snapshotCoords(): Promise<{
-    lat: number | null;
-    lng: number | null;
-    accuracy?: number | null;
-    ts: string;
-  }> {
-    try {
-      const pos: any =
-        (this.geo as any)?.getCurrentPosition
-          ? await (this.geo as any).getCurrentPosition()
-          : (this.geo as any)?.getPosition
-          ? await (this.geo as any).getPosition()
-          : null;
-
-      if (pos) {
-        const coords = pos.coords || pos;
-        const ts =
-          typeof pos.timestamp === 'number'
-            ? new Date(pos.timestamp).toISOString()
-            : pos.timestamp || new Date().toISOString();
-
-        return {
-          lat: coords.latitude ?? coords.lat ?? null,
-          lng: coords.longitude ?? coords.lng ?? null,
-          accuracy: coords.accuracy ?? null,
-          ts,
-        };
-      }
-    } catch {}
-
-    if (typeof navigator !== 'undefined' && navigator.geolocation?.getCurrentPosition) {
-      const navPos: GeolocationPosition = await new Promise((resolve, reject) =>
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          maximumAge: 0,
-          timeout: 15000
-        })
-      );
-      return {
-        lat: navPos.coords.latitude,
-        lng: navPos.coords.longitude,
-        accuracy: navPos.coords.accuracy,
-        ts: new Date(navPos.timestamp).toISOString()
-      };
-    }
-
-    return {
-      lat: null,
-      lng: null,
-      accuracy: null,
-      ts: new Date().toISOString()
-    };
-  }
-
+  // ===== Helper etiqueta =====
   get estadoActualLabel(): string {
     const v = (this.estadoForm.value.estado as EstadoRuta) || 'SIN_ESTADO';
     return this.estadoRutaLabels[v];

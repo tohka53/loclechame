@@ -18,6 +18,15 @@ import { SessionBadgeComponent } from './shared/components/session-badge/session
 import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 import { AuthGuard } from './core/guards/auth.guard';
 
+import { APP_INITIALIZER } from '@angular/core';
+import { SessionService } from './core/services/session.service';
+
+
+export function restoreSessionFactory(session: SessionService) {
+  return () => session.restore();
+}
+
+
 @NgModule({
   declarations: [
     AppComponent,
@@ -37,6 +46,7 @@ import { AuthGuard } from './core/guards/auth.guard';
     AppRoutingModule
   ],
   providers: [
+   { provide: APP_INITIALIZER, useFactory: restoreSessionFactory, deps: [SessionService], multi: true },
     { provide: HTTP_INTERCEPTORS, multi: true, useClass: AuthInterceptor },
     AuthGuard
   ],

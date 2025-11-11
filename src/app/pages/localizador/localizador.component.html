@@ -1,6 +1,24 @@
 <app-navbar></app-navbar>
 
-<!-- 🟣 MODAL PREVIO: Estado de ruta -->
+<!-- 🟩 MODAL: Código del Transportista -->
+<div class="modal-backdrop" *ngIf="showTransportistaModal">
+  <div class="modal">
+    <h2>Transportista</h2>
+    <p>Ingresa el código del transportista para cargar predios y unidades.</p>
+
+    <form [formGroup]="transportistaForm" (ngSubmit)="confirmarTransportista()">
+      <label>Código de transportista</label>
+      <input formControlName="codigo" placeholder="Ej. 202620" autofocus />
+      <div class="modal-actions">
+        <button type="submit" class="btn primary" [disabled]="transportistaForm.invalid || loadingApis">
+          {{ loadingApis ? 'Cargando...' : 'Continuar' }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 🟣 MODAL: Estado de ruta (tu modal previo, sin cambios de UX) -->
 <div class="modal-backdrop" *ngIf="showEstadoModal">
   <div class="modal">
     <h2>Estado del trayecto</h2>
@@ -8,37 +26,34 @@
 
     <form [formGroup]="estadoForm" (ngSubmit)="confirmarEstado()">
       <fieldset class="etapa-group">
-  <legend>Estado</legend>
+        <legend>Estado</legend>
 
-  <label class="radio">
-    <input type="radio" formControlName="estado" value="INICIO_RUTA" />
-    <span>Inicio de ruta</span>
-  </label>
+        <label class="radio">
+          <input type="radio" formControlName="estado" value="INICIO_RUTA" />
+          <span>Inicio de ruta</span>
+        </label>
 
-  <label class="radio">
-    <input type="radio" formControlName="estado" value="DESCANSO_RUTA" />
-    <span>Descanso en ruta</span>
-  </label>
+        <label class="radio">
+          <input type="radio" formControlName="estado" value="DESCANSO_RUTA" />
+          <span>Descanso en ruta</span>
+        </label>
 
-  <label class="radio">
-    <input type="radio" formControlName="estado" value="DESPERFECTO_RUTA" />
-    <span>Desperfecto en ruta</span>
-  </label>
+        <label class="radio">
+          <input type="radio" formControlName="estado" value="DESPERFECTO_RUTA" />
+          <span>Desperfecto en ruta</span>
+        </label>
 
-  <label class="radio">
-    <input type="radio" formControlName="estado" value="FIN_TRAYECTO" />
-    <span>Fin de trayecto</span>
-  </label>
-</fieldset>
-  
+        <label class="radio">
+          <input type="radio" formControlName="estado" value="FIN_TRAYECTO" />
+          <span>Fin de trayecto</span>
+        </label>
+      </fieldset>
 
       <label>Notas (opcional)</label>
       <textarea formControlName="notas" rows="3" placeholder="Observaciones..."></textarea>
 
       <div class="modal-actions">
-        <button type="submit" class="btn primary" [disabled]="estadoForm.invalid">
-          Guardar y continuar
-        </button>
+        <button type="submit" class="btn primary" [disabled]="estadoForm.invalid">Guardar y continuar</button>
         <button type="button" class="btn" (click)="cancelarEstadoModal()">Cancelar</button>
       </div>
     </form>
@@ -48,25 +63,30 @@
 <div class="wrap">
   <h2>Localizador de trayecto</h2>
 
-  <!-- ⬇️ Cambiamos el submit para abrir el modal primero -->
+  <!-- Abrimos modal de estado primero -->
   <form [formGroup]="form" (ngSubmit)="preGuardar()">
-    <label>Placa del cabezal</label>
-    <input formControlName="placa_cabezal" placeholder="ABC123" />
 
-  <label>Predio</label>
-<select formControlName="id_predio">
-  <option [ngValue]="null">Seleccione...</option>
-  <option *ngFor="let p of predios" [ngValue]="p.id_predio">{{ p.nombre_predio }}</option>
-</select>
+    <div class="card" *ngIf="codTransportista" style="margin-bottom:12px">
+      <small>Transportista: <b>{{ codTransportista }}</b></small>
+      <button class="btn small" style="margin-left:8px" type="button" (click)="abrirModalTransportista()">Cambiar</button>
+    </div>
 
-<label>Conductor</label>
-<select formControlName="id_conductor">
-  <option [ngValue]="null">Seleccione...</option>
-  <option *ngFor="let c of conductores" [ngValue]="c.id_conductor">
-    {{ c.nombre }} {{ c.apellido }}
-  </option>
-</select>
+    <label>Placa / Unidad</label>
+    <select formControlName="placa_cabezal">
+      <option [ngValue]="null">Seleccione...</option>
+      <option *ngFor="let u of unidades" [ngValue]="u.codigo">
+        {{ u.codigo }} • {{ u.tipo }}
+      </option>
+    </select>
 
+    <label>Predio</label>
+    <select formControlName="id_predio">
+      <option [ngValue]="null">Seleccione...</option>
+      <option *ngFor="let p of predios" [ngValue]="p.codigo">{{ p.nombre }}</option>
+    </select>
+
+    <label>Conductor (Nombre staff)</label>
+    <input formControlName="nombre_piloto" readonly placeholder="Se completa al elegir la unidad" />
 
     <label class="check">
       <input type="checkbox" formControlName="usarJson" />
@@ -81,9 +101,7 @@
 <div *ngFor="let it of puntos" class="card" style="margin-top:8px">
   <div class="row-top">
     <b>{{it.placa_cabezal}}</b>
-    • Conductor {{it.id_conductor}}
     • Predio {{it.id_predio}}
-
     <span class="pill" [ngClass]="it.estado_ruta || 'SIN_ESTADO'">
       {{ estadoRutaLabels[it.estado_ruta || 'SIN_ESTADO'] }}
     </span>
@@ -101,9 +119,7 @@
 <div *ngIf="(pendientes?.length || 0) === 0" class="card"><small>No hay pendientes.</small></div>
 <div *ngFor="let it of pendientes" class="card">
   <div class="row-top">
-    <b>{{it.placa_cabezal}}</b>
-    • Conductor {{it.id_conductor}}
-    • Predio {{it.id_predio}}
+    <b>{{it.placa_cabezal}}</b> • Predio {{it.id_predio}}
     <span class="pill" [ngClass]="it.estado_ruta || 'SIN_ESTADO'">
       {{ estadoRutaLabels[it.estado_ruta || 'SIN_ESTADO'] }}
     </span>
