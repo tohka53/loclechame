@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { map, Observable } from 'rxjs';
 
 export type Unidad = { codigo: string; tipo: string };
@@ -8,34 +8,58 @@ export type Piloto = { staffNumber: number; staffName: string };
 
 const BASE = 'https://hamejdeorchpy.endtoend.com.mx/jderest/orchestrator';
 
+// ⚠️ En un proyecto real esto debería ir en variables de entorno / backend,
+// pero por ahora lo dejamos aquí tal como lo usas en Postman.
+const JDE_USER = 'mcabrera';
+const JDE_PASS = 'Hame2025$';
+
 @Injectable({ providedIn: 'root' })
 export class JdeService {
   constructor(private http: HttpClient) {}
 
+  /** Headers con Basic Auth + JSON */
+  private getHeaders(): HttpHeaders {
+    const basic = btoa(`${JDE_USER}:${JDE_PASS}`);
+    return new HttpHeaders({
+      Authorization: `Basic ${basic}`,
+      'Content-Type': 'application/json'
+    });
+  }
+
   getUnidadesPorTransportista(codTransportista: string): Observable<Unidad[]> {
     const url = `${BASE}/JDE_ORCH_55_UnidadesPorTransportistaMP`;
-    return this.http.post<any>(url, { Cod_Transportista: codTransportista }).pipe(
-      map(r => (r?.JDE_FREQ_55_UnidadesPorTransportistasMP_1 ?? []).map((x: any) => ({
-        codigo: x?.Codigo_Unidad,
-        tipo: x?.Tipo_Unidad
-      })))
+    const body = { Cod_Transportista: codTransportista };
+
+    return this.http.post<any>(url, body, { headers: this.getHeaders() }).pipe(
+      map(r =>
+        (r?.JDE_FREQ_55_UnidadesPorTransportistasMP_1 ?? []).map((x: any) => ({
+          codigo: x?.Codigo_Unidad,
+          tipo: x?.Tipo_Unidad
+        }))
+      )
     );
   }
 
   getPrediosPorTransportista(codTransportista: string): Observable<Predio[]> {
     const url = `${BASE}/JDE_ORCH_55_PrediosPorTransportistasMP`;
-    return this.http.post<any>(url, { Codigo_Transportista: codTransportista }).pipe(
-      map(r => (r?.JDE_DREQ_55_PrediosPorTransportistasMP ?? []).map((x: any) => ({
-        codigo: x?.Codigo_Predio,
-        nombre: x?.Nombre_Predio,
-        detalle: x?.Detalle_Predio
-      })))
+    const body = { Codigo_Transportista: codTransportista };
+
+    return this.http.post<any>(url, body, { headers: this.getHeaders() }).pipe(
+      map(r =>
+        (r?.JDE_DREQ_55_PrediosPorTransportistasMP ?? []).map((x: any) => ({
+          codigo: x?.Codigo_Predio,
+          nombre: x?.Nombre_Predio,
+          detalle: x?.Detalle_Predio
+        }))
+      )
     );
   }
 
   getPilotoPorUnidad(codigoUnidad: string): Observable<Piloto | null> {
     const url = `${BASE}/JDE_ORCH_55_CodigoPilotoPorUnidadMP`;
-    return this.http.post<any>(url, { Codigo_Unidad: codigoUnidad }).pipe(
+    const body = { Codigo_Unidad: codigoUnidad };
+
+    return this.http.post<any>(url, body, { headers: this.getHeaders() }).pipe(
       map(r => {
         const arr = r?.JDE_FREQ_55_CodigoPilotoPorUnidadMP_1 ?? [];
         if (!arr.length) return null;
