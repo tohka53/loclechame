@@ -232,3 +232,62 @@ input, button { width:100%; padding:10px; border:1px solid #ccc; border-radius:8
   gap: 6px;
   margin-right: 16px;
 }
+
+
+/* ============================================
+   FIX Z-INDEX para Lector Component
+   Agregar al final de lector.component.scss
+   ============================================ */
+
+/* Asegurar que TODO el contenido del lector esté por debajo del menú */
+:host {
+  display: block;
+  position: relative;
+  z-index: 1 !important;
+}
+
+/* Scanner */
+.scanner {
+  position: relative;
+  z-index: 1 !important;
+}
+
+/* Video preview */
+#preview {
+  z-index: 1 !important;
+}
+
+/* Overlay del scanner */
+.overlay {
+  z-index: 2 !important;
+}
+
+/* Barra inferior del scanner */
+.bottom-bar {
+  z-index: 3 !important;
+}
+
+/* Caja de capturas */
+.capture-box {
+  z-index: 4 !important;
+}
+
+/* Form wrap */
+.form-wrap {
+  z-index: 1 !important;
+}
+
+/* Top controls */
+.top-controls {
+  position: relative;
+  z-index: 5 !important; /* Debe estar sobre el scanner pero bajo el menú */
+}
+
+/* Modal debe estar por encima del menú lateral */
+.modal-backdrop {
+  z-index: 10002 !important;
+}
+
+.modal {
+  z-index: 10003 !important;
+}

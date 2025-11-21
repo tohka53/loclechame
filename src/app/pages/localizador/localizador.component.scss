@@ -1,166 +1,699 @@
-/* Backdrop y contenedor */
+/* ============================================
+   COLORES CORPORATIVOS GRUPO HAME
+   Basados en el Manual de Marca
+   ============================================ */
+
+// Paleta Primaria
+$color-ambiental: #00833e;      // PANTONE 384 C - Verde
+$color-prosperidad: #d79a2b;    // PANTONE 7563 C - Dorado
+$color-personas: #483729;       // PANTONE 7533 C - Café
+
+// Paleta Secundaria
+$color-verde-claro: #45a041;    // PANTONE 7738 C
+$color-naranja: #ff9015;        // PANTONE Orange 021 C
+$color-gris: #636569;           // PANTONE Cool Gray 10 C
+$color-amarillo: #fed925;       // PANTONE 115 C
+
+// Colores de soporte
+$color-blanco: #ffffff;
+$color-negro: #000000;
+
+// Tipografía
+$font-primary: 'Trajan Pro', serif;
+$font-secondary: 'Cooper Hewitt', sans-serif;
+$font-fallback: 'Lato', 'Arial', sans-serif;
+
+/* ============================================
+   ESTILOS DEL COMPONENTE LOCALIZADOR
+   ============================================ */
+
+.wrap {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 0 16px;
+}
+
+h2 {
+  font-family: $font-primary, $font-fallback;
+  color: $color-ambiental;
+  font-size: 1.8rem;
+  margin-bottom: 20px;
+  font-weight: bold;
+}
+
+h3 {
+  font-family: $font-secondary, $font-fallback;
+  color: $color-personas;
+  font-size: 1.4rem;
+  margin: 24px 0 12px 0;
+  font-weight: 600;
+}
+
+/* ============================================
+   FORMULARIOS
+   ============================================ */
+
+form {
+  background: $color-blanco;
+  padding: 24px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+label {
+  display: block;
+  font-family: $font-secondary, $font-fallback;
+  font-weight: 600;
+  color: $color-personas;
+  margin-bottom: 8px;
+  margin-top: 16px;
+  font-size: 0.95rem;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+}
+
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+  width: 100%;
+  padding: 12px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 6px;
+  font-family: $font-secondary, $font-fallback;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: $color-blanco;
+  color: $color-negro;
+
+  &:focus {
+    outline: none;
+    border-color: $color-ambiental;
+    box-shadow: 0 0 0 3px rgba(0, 131, 62, 0.1);
+  }
+
+  &:disabled,
+  &[readonly] {
+    background-color: #f5f5f5;
+    color: #666;
+    cursor: not-allowed;
+  }
+
+  &::placeholder {
+    color: #999;
+  }
+}
+
+textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+/* ============================================
+   BOTONES
+   ============================================ */
+
+button,
+.btn {
+  font-family: $font-secondary, $font-fallback;
+  font-weight: 600;
+  padding: 14px 28px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  display: inline-block;
+  text-align: center;
+  
+  &[type="submit"],
+  &.primary {
+    background: $color-ambiental;
+    color: $color-blanco;
+    width: 100%;
+    margin-top: 24px;
+
+    &:hover:not(:disabled) {
+      background: darken($color-ambiental, 8%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 131, 62, 0.3);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+    }
+  }
+
+  &.small {
+    padding: 8px 16px;
+    font-size: 0.875rem;
+    margin-top: 0;
+    width: auto;
+    background: $color-prosperidad;
+    color: $color-blanco;
+
+    &:hover:not(:disabled) {
+      background: darken($color-prosperidad, 8%);
+    }
+
+    &.ghost {
+      background: transparent;
+      border: 2px solid $color-prosperidad;
+      color: $color-prosperidad;
+
+      &:hover:not(:disabled) {
+        background: $color-prosperidad;
+        color: $color-blanco;
+      }
+    }
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+/* ============================================
+   RADIO BUTTONS MODERNOS - Estado de Ruta
+   ============================================ */
+
+.estado-section {
+  margin-top: 24px;
+
+  .estado-title {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: $color-personas;
+    margin-bottom: 16px;
+    letter-spacing: -0.01em;
+  }
+
+  .radio-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+
+    @media (max-width: 640px) {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .radio-card {
+    position: relative;
+    display: block;
+    cursor: pointer;
+    
+    input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+
+      &:checked ~ .radio-content {
+        background: $color-blanco;
+        border-color: $color-ambiental;
+        box-shadow: 0 0 0 3px rgba(0, 131, 62, 0.1);
+
+        .radio-label {
+          color: $color-ambiental;
+          font-weight: 600;
+        }
+
+        .radio-icon {
+          transform: scale(1.15);
+        }
+      }
+
+      &:checked ~ .radio-indicator {
+        opacity: 1;
+        transform: scale(1);
+      }
+
+      &:focus ~ .radio-content {
+        outline: 2px solid $color-ambiental;
+        outline-offset: 2px;
+      }
+    }
+
+    .radio-content {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: $color-blanco;
+      border: 2px solid #e8e8e8;
+      border-radius: 12px;
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+
+      &:hover {
+        border-color: lighten($color-ambiental, 20%);
+        background: rgba(0, 131, 62, 0.02);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      }
+
+      &::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 4px;
+        height: 100%;
+        background: $color-ambiental;
+        transform: scaleY(0);
+        transition: transform 0.3s ease;
+      }
+    }
+
+    input[type="radio"]:checked ~ .radio-content::before {
+      transform: scaleY(1);
+    }
+
+    .radio-icon {
+      font-size: 1.5rem;
+      line-height: 1;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+    }
+
+    .radio-label {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      color: #333;
+      line-height: 1.4;
+      letter-spacing: -0.01em;
+      transition: all 0.25s ease;
+    }
+
+    .radio-indicator {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: $color-ambiental;
+      opacity: 0;
+      transform: scale(0);
+      transition: all 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+
+      &::after {
+        content: '✓';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        font-size: 12px;
+        font-weight: bold;
+      }
+    }
+  }
+}
+
+/* ============================================
+   CARDS Y CONTENEDORES
+   ============================================ */
+
+.card {
+  background: $color-blanco;
+  padding: 16px;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  margin-bottom: 12px;
+  border-left: 4px solid $color-ambiental;
+  transition: all 0.3s ease;
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-2px);
+  }
+
+  small {
+    font-family: $font-secondary, $font-fallback;
+    color: #666;
+    font-size: 0.875rem;
+  }
+
+  b {
+    color: $color-ambiental;
+    font-weight: 700;
+  }
+}
+
+.card-header-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  .card-header-info {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .card-header-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+}
+
+.local-pill {
+  display: inline-block;
+  background: rgba(215, 154, 43, 0.1);
+  border: 1px solid $color-prosperidad;
+  color: $color-personas;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-top: 4px;
+
+  b {
+    color: $color-prosperidad;
+  }
+}
+
+.row-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+
+  b {
+    font-size: 1.1rem;
+  }
+}
+
+/* ============================================
+   PILLS - Estados de Ruta
+   ============================================ */
+
+.pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-family: $font-secondary, $font-fallback;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+
+  &.INICIO_RUTA {
+    background: rgba(0, 131, 62, 0.15);
+    color: $color-ambiental;
+    border: 1px solid $color-ambiental;
+  }
+
+  &.DESCANSO_RUTA {
+    background: rgba(215, 154, 43, 0.15);
+    color: darken($color-prosperidad, 10%);
+    border: 1px solid $color-prosperidad;
+  }
+
+  &.DESPERFECTO_RUTA {
+    background: rgba(255, 144, 21, 0.15);
+    color: darken($color-naranja, 10%);
+    border: 1px solid $color-naranja;
+  }
+
+  &.FIN_TRAYECTO {
+    background: rgba(72, 55, 41, 0.15);
+    color: $color-personas;
+    border: 1px solid $color-personas;
+  }
+
+  &.SIN_ESTADO {
+    background: rgba(99, 101, 105, 0.15);
+    color: $color-gris;
+    border: 1px solid $color-gris;
+  }
+}
+
+/* ============================================
+   AUTOCOMPLETE
+   ============================================ */
+
+.autocomplete {
+  position: relative;
+
+  .autocomplete-list {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: $color-blanco;
+    border: 2px solid $color-ambiental;
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    max-height: 240px;
+    overflow-y: auto;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .autocomplete-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-family: $font-secondary, $font-fallback;
+    color: $color-personas;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid #f0f0f0;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      background: rgba(0, 131, 62, 0.1);
+      color: $color-ambiental;
+    }
+
+    strong {
+      color: $color-ambiental;
+      font-weight: 700;
+    }
+  }
+}
+
+/* ============================================
+   MODAL
+   ============================================ */
+
 .modal-backdrop {
   position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45); /* slate-900/45 */
-  display: grid;
-  place-items: center;
-  z-index: 50;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
 }
 
 .modal {
-  width: min(640px, 92vw);
-  background: #fff;
-  border-radius: 16px;
-  padding: 24px 28px;
-  box-shadow: 0 24px 64px rgba(2, 6, 23, 0.25);
-}
-
-.modal h2 {
-  margin: 0 0 6px 0;
-  font-size: 22px;
-  line-height: 1.2;
-  font-weight: 800;
-  color: #111827; /* gray-900 */
-}
-
-.modal > p {
-  margin: 0 0 16px 0;
-  color: #6b7280; /* gray-500 */
-  font-size: 14px;
-}
-
-/* Fieldset radios */
-.etapa-group {
-  margin-top: 8px;
-  background: #f8fafc;            /* slate-50 */
-  border: 1px solid #e5e7eb;       /* gray-200 */
+  background: $color-blanco;
+  padding: 32px;
   border-radius: 12px;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.etapa-group > legend {
-  padding: 0 6px;
-  font-size: 12px;
-  color: #6b7280;                  /* gray-500 */
-}
-
-/* Cada opción radio en grid: [●][texto] */
-.radio {
-  display: grid;
-  grid-template-columns: 20px 1fr;
-  align-items: center;
-  column-gap: 12px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  cursor: pointer;
-  user-select: none;
-  transition: background-color .15s ease, box-shadow .15s ease;
-}
-
-.radio:hover {
-  background: #f1f5f9;             /* slate-100 */
-}
-
-.radio input {
-  margin: 0;
-  width: 16px;
-  height: 16px;
-  accent-color: #0ea5e9;           /* sky-500 (moderno) */
-}
-
-.radio span {
-  font-size: 15px;
-  color: #111827;
-}
-
-/* Textarea y labels */
-.modal label {
-  display: block;
-  margin-top: 14px;
-  margin-bottom: 6px;
-  font-weight: 600;
-  color: #374151;                  /* gray-700 */
-  font-size: 14px;
-}
-
-.modal textarea {
+  max-width: 500px;
   width: 100%;
-  min-height: 84px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 10px 12px;
-  font-family: inherit;
-  font-size: 14px;
-  resize: vertical;
-  outline: none;
-  transition: border-color .15s ease, box-shadow .15s ease;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border-top: 6px solid $color-ambiental;
+  position: relative;
+  z-index: 1001;
+
+  h2 {
+    margin-top: 0;
+    margin-bottom: 12px;
+    color: $color-ambiental;
+  }
+
+  p {
+    font-family: $font-secondary, $font-fallback;
+    color: #666;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
 }
 
-.modal textarea:focus {
-  border-color: #38bdf8;           /* sky-400 */
-  box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.15);
-}
-
-/* Acciones del modal: botones al mismo ancho */
-.modal-actions {
-  margin-top: 16px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-
-.btn {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  height: 42px;
-  padding: 0 14px;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  color: #111827;
-  font-weight: 600;
+.modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: rgba(0, 0, 0, 0.05);
+  color: #666;
+  font-size: 24px;
+  line-height: 1;
+  border-radius: 50%;
   cursor: pointer;
-  transition: transform .05s ease, box-shadow .15s ease, background-color .15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  font-family: Arial, sans-serif;
+  padding: 0;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.1);
+    color: $color-negro;
+    transform: scale(1.1);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
 }
 
-.btn:hover {
-  background: #f8fafc;
-  box-shadow: 0 2px 8px rgba(2, 6, 23, 0.08);
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+  justify-content: flex-end;
+
+  button {
+    flex: 1;
+    margin-top: 0;
+  }
 }
 
-.btn:active {
-  transform: translateY(1px);
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 640px) {
+  .wrap {
+    padding: 0 12px;
+  }
+
+  h2 {
+    font-size: 1.5rem;
+  }
+
+  form {
+    padding: 16px;
+  }
+
+  .card-header-line {
+    flex-direction: column;
+    align-items: flex-start;
+
+    .card-header-actions {
+      width: 100%;
+      
+      button {
+        flex: 1;
+      }
+    }
+  }
+
+  .modal {
+    padding: 24px;
+  }
+
+  .modal-actions {
+    flex-direction: column;
+
+    button {
+      width: 100%;
+    }
+  }
 }
 
-.btn.primary {
-  background: #059669;             /* emerald-600 */
-  color: #fff;
-  border-color: #059669;
+/* ============================================
+   ANIMACIONES
+   ============================================ */
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.btn.primary:hover {
-  background: #047857;             /* emerald-700 */
+.card,
+.autocomplete-list {
+  animation: fadeIn 0.3s ease;
 }
 
-/* Pills (sección de lista) */
-.pill {
-  margin-left: 8px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 12px;
-  border: 1px solid transparent;
-  display: inline-block;
+/* ============================================
+   FIX Z-INDEX para Lector Component
+   Agregar al final de lector.component.scss
+   ============================================ */
+
+/* Asegurar que TODO el contenido del lector esté por debajo del menú */
+:host {
+  display: block;
+  position: relative;
+  z-index: 1 !important;
 }
 
-.pill.INICIO_RUTA      { background:#e6f4ea; color:#137333; border-color:#c8e6cc; }
-.pill.DESCANSO_RUTA    { background:#e9f0fe; color:#174ea6; border-color:#d2dcff; }
-.pill.DESPERFECTO_RUTA { background:#fce8e6; color:#a50e0e; border-color:#f8d7da; }
-.pill.FIN_TRAYECTO     { background:#fff3cd; color:#8a6d3b; border-color:#ffecb5; }
-.pill.SIN_ESTADO       { background:#f1f3f4; color:#444;    border-color:#e0e0e0; }
+/* Scanner */
+.scanner {
+  position: relative;
+  z-index: 1 !important;
+}
 
-.row-top { display:flex; align-items:center; gap:8px; flex-wrap: wrap; }
+/* Video preview */
+#preview {
+  z-index: 1 !important;
+}
+
+/* Overlay del scanner */
+.overlay {
+  z-index: 2 !important;
+}
+
+/* Barra inferior del scanner */
+.bottom-bar {
+  z-index: 3 !important;
+}
+
+/* Caja de capturas */
+.capture-box {
+  z-index: 4 !important;
+}
+
+/* Form wrap */
+.form-wrap {
+  z-index: 1 !important;
+}
+
+/* Top controls */
+.top-controls {
+  position: relative;
+  z-index: 5 !important; /* Debe estar sobre el scanner pero bajo el menú */
+}
+
+/* Modal debe estar por encima del menú lateral */
+.modal-backdrop {
+  z-index: 10002 !important;
+}
+
+.modal {
+  z-index: 10003 !important;
+}

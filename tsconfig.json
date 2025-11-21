@@ -20,7 +20,18 @@
     "useDefineForClassFields": false,
     "lib": [
       "ES2022",
+      "ES2020",
       "DOM"
-    ]
+    ],
+    "types": ["node"],
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "angularCompilerOptions": {
+    "enableI18nLegacyMessageIdFormat": false,
+    "strictInjectionParameters": true,
+    "strictInputAccessModifiers": true,
+    "strictTemplates": true
   }
 }

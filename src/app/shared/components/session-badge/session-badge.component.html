@@ -1,4 +1,4 @@
-<div *ngIf="session.isActive()" class="badge">
-  Sesión #{{ session.getIdSesion() }} • Usuario: {{ session.getUsuario() || 'N/D' }}
+<div *ngIf="session.isActive()" class="badge green-700">
+   Usuario: {{ session.getUsuario() || 'N/D' }}
 </div>
 <div *ngIf="!session.isActive()" class="badge off">Sin sesión activa</div>

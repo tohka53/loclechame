@@ -3,6 +3,7 @@ import { FormBuilder, Validators } from '@angular/forms';
 import { GeolocationService } from '../../core/services/geolocation.service';
 import { LectorService } from '../../core/services/lector.service';
 import { SessionService } from '../../core/services/session.service';
+import { SqlDirectService } from '../../core/services/sql-direct.service';
 import { BrowserMultiFormatReader, IScannerControls } from '@zxing/browser';
 import { Result, BarcodeFormat, DecodeHintType } from '@zxing/library';
 import { OfflineQueueService } from 'src/app/core/services/offline-queue.service';
@@ -53,7 +54,8 @@ export class LectorComponent implements OnInit, OnDestroy {
     private geo: GeolocationService,
     private service: LectorService,
     private session: SessionService,
-    private offq: OfflineQueueService
+    private offq: OfflineQueueService,
+    private sqlDirect: SqlDirectService
   ) {
     const hints = new Map();
     hints.set(DecodeHintType.POSSIBLE_FORMATS, [
@@ -291,8 +293,30 @@ export class LectorComponent implements OnInit, OnDestroy {
     }
 
     this.service.guardarLectura(payload).subscribe({
-      next: _ => {
+      next: async _ => {
         alert('Lectura guardada');
+        
+        // ✅ Guardar directamente en SQL Server
+        try {
+          const sqlPayload = {
+            id_sesion: this.session.getIdSesion()!,
+            codigo_barra: this.form.value.codigo_barra!,
+            formato_barcode: this.form.value.formato!,
+            etapa: this.form.value.etapa!,
+            dispositivo: meta.device.ua,
+            area: this.areaInfo!.area,
+            usuario_registro: this.areaInfo!.usuario,
+            latitud: meta.lat,
+            longitud: meta.lon,
+            precision_metros: meta.accuracy,
+          };
+
+          const id_lectura = await this.sqlDirect.insertarLectura(sqlPayload);
+          console.log('✅ Lectura guardada en SQL Server ID:', id_lectura);
+        } catch (e) {
+          console.warn('⚠️ No se pudo guardar en SQL Server:', e);
+        }
+        
         this.cargarLecturas();
       },
       error: err => {

@@ -11,6 +11,7 @@ export interface Session {
   token_jwt: string;
 }
 
+
 const LS_KEY = 'loclechame_session';
 const APP_PREFIX = 'loclechame_';
 const AREA_INFO_KEY = 'lector_area_info_v1';
@@ -140,6 +141,9 @@ export class SessionService {
     return this.session?.id_sesion ?? null;
   }
 
+  get(): Session | null {
+  return this.session;
+}
   getUsuario(): string | null {
     return this.session?.id_usuario ?? null;
   }

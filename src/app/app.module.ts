@@ -30,7 +30,6 @@ export function restoreSessionFactory(session: SessionService) {
 @NgModule({
   declarations: [
     AppComponent,
-    LoginComponent,
     DashboardComponent,
     LectorComponent,
     LocalizadorComponent,

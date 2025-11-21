@@ -7,8 +7,7 @@ export interface DeviceInfo {
   platform: string;     // navigator.platform
   ua: string;           // userAgent
   vendor?: string;      // navigator.vendor
-  cores?: number;       // hardwareConcurrency
-  memoryGB?: number;    // deviceMemory
+
 }
 
 @Injectable({ providedIn: 'root' })
@@ -17,8 +16,6 @@ export class DeviceService {
     const ua = navigator.userAgent || '';
     const platform = (navigator as any).platform || '';
     const vendor = (navigator as any).vendor || '';
-    const cores = (navigator as any).hardwareConcurrency;
-    const memory = (navigator as any).deviceMemory;
 
     let brand = 'Unknown';
     let model = 'Unknown';
@@ -52,9 +49,7 @@ export class DeviceService {
       model,
       platform,
       ua,
-      vendor,
-      cores,
-      memoryGB: memory ? Number(memory) : undefined
+      vendor
     };
   }
 }

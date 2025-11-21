@@ -1,29 +1,111 @@
-<div class="login-card">
-  <h2>Iniciar sesión</h2>
+<div class="bg-no-repeat bg-cover bg-center relative min-h-screen"
+     style="background-image: url(https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1951&q=80);">
 
-  <form [formGroup]="form" (ngSubmit)="submit()">
+  <!-- Overlay con gradiente corporativo -->
+  <div class="absolute bg-gradient-to-b from-green-500 to-green-400 opacity-75 inset-0 z-0"></div>
 
-    <label>Usuario</label>
-    <input formControlName="id_usuario" placeholder="correo/usuario" />
+  <div class="flex min-h-screen">
+    <!-- Contenedor principal del login -->
+    <div class="login-wrapper">
+      <div class="login-container">
+        
+        <!-- Logo y cabecera -->
+        <div class="text-center mb-6">
+          <img src="logohame2.png" alt="Grupo HAME Logo" class="h-16 mx-auto mb-3">
+          <h1 class="system-name">Trazabilidad Unidades MP</h1>
+          <p class="text-sm text-gray-500 mt-2">Sistema de Logística y Transporte</p>
+        </div>
 
-    <label>Contraseña</label>
-    <div class="pass-wrap">
-      <input
-        [type]="showPass ? 'text' : 'password'"
-        formControlName="contra"
-        placeholder="••••••" />
-      <button type="button" class="toggle" (click)="toggleShowPass()">
-        {{ showPass ? 'Ocultar' : 'Ver' }}
-      </button>
+        <!-- Título del formulario -->
+        <h2 class="form-title">Inicio de Sesión</h2>
+
+        <!-- Mensaje de error -->
+        <div class="error-message" *ngIf="errorMessage">
+          <i class="fas fa-exclamation-circle"></i>
+          <span>{{ errorMessage }}</span>
+        </div>
+
+        <!-- Formulario de login -->
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+          
+          <!-- Campo de usuario -->
+          <div class="input-group">
+            <label for="username">
+              <i class="fas fa-user"></i> Usuario
+            </label>
+            <input
+              type="text"
+              id="username"
+              formControlName="username"
+              placeholder="Usuario de Active Directory"
+              [ngClass]="{'border-red-500': submitted && loginForm.get('username')?.errors}"
+              autocomplete="username">
+            <div class="error-text" 
+                 *ngIf="submitted && loginForm.get('username')?.errors?.['required']">
+              El usuario es requerido
+            </div>
+            <div class="error-text" 
+                 *ngIf="submitted && loginForm.get('username')?.errors?.['minlength']">
+              El usuario debe tener al menos 3 caracteres
+            </div>
+          </div>
+
+          <!-- Campo de contraseña -->
+          <div class="input-group">
+            <label for="password">
+              <i class="fas fa-lock"></i> Contraseña
+            </label>
+            <div class="password-field">
+              <input
+                [type]="showPassword ? 'text' : 'password'"
+                id="password"
+                formControlName="password"
+                placeholder="Contraseña de Active Directory"
+                [ngClass]="{'border-red-500': submitted && loginForm.get('password')?.errors}"
+                autocomplete="current-password">
+              <span class="password-toggle" (click)="toggleShowPassword()">
+                <i class="fas" [ngClass]="showPassword ? 'fa-eye-slash' : 'fa-eye'"></i>
+              </span>
+            </div>
+            <div class="error-text" 
+                 *ngIf="submitted && loginForm.get('password')?.errors?.['required']">
+              La contraseña es requerida
+            </div>
+            <div class="error-text" 
+                 *ngIf="submitted && loginForm.get('password')?.errors?.['minlength']">
+              La contraseña debe tener al menos 4 caracteres
+            </div>
+          </div>
+
+          <!-- Checkbox Recordarme -->
+          <div class="flex items-center">
+            <input
+              type="checkbox"
+              id="rememberMe"
+              formControlName="rememberMe">
+            <label for="rememberMe">
+              Recordar usuario
+            </label>
+          </div>
+
+          <!-- Botón de inicio de sesión -->
+          <button
+            type="submit"
+            [disabled]="isLoading">
+            <span class="spinner" *ngIf="isLoading">
+              <i class="fas fa-spinner fa-spin"></i>
+            </span>
+            <i class="fas fa-sign-in-alt" *ngIf="!isLoading"></i>
+            {{ isLoading ? 'Autenticando...' : 'Ingresar' }}
+          </button>
+        </form>
+
+        <!-- Información adicional -->
+        <div class="mt-6 text-center">
+          <p><i class="fas fa-info-circle"></i> Usa tus credenciales de Active Directory</p>
+          <p>&copy; 2025 Grupo HAME - Todos los derechos reservados</p>
+        </div>
+      </div>
     </div>
-
-    <!-- 🔒 JWT oculto en la UI pero disponible en el form -->
-    <input type="hidden" formControlName="token_jwt" />
-
-    <button type="submit" [disabled]="loading || form.invalid">
-      {{ loading ? 'Ingresando…' : 'Entrar' }}
-    </button>
-
-    <div class="error" *ngIf="error">{{ error }}</div>
-  </form>
+  </div>
 </div>

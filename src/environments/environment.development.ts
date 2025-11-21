@@ -1,5 +1,6 @@
 export const environment = {
   production: false,
-  apiBaseUrl: 'mock://api',   // marcador simbólico
-  useMockApi: true
+  
+  apiUrl: 'http://srvgtwdhm16:7176' // Cambiar a la URL real de producción
+
 };

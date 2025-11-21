@@ -106,30 +106,3 @@
     <button type="submit" class="btn primary">Guardar lectura</button>
   </form>
 </div>
-
-<!-- 🟣 Lecturas ya guardadas -->
-<h3 class="list-title">Lecturas guardadas</h3>
-<div *ngFor="let it of lecturas" class="card">
-  <div class="row-top">
-    <b>{{ it.codigo_barra }}</b> • {{ it.formato_barcode }}
-
-    <span class="pill" [ngClass]="it.etapa">
-      {{ it.etapa === 'INICIO_CARGA' ? 'Inicio de Carga'
-           : it.etapa === 'FIN_CARGA' ? 'Fin de Carga'
-           : it.etapa === 'TOMA_LAB' ? 'Toma de Laboratorio'
-           : it.etapa === 'BASCULA' ? 'Pesaje Bascula'
-           : (it.etapa || 'Sin etapa') }}
-    </span>
-  </div>
-
-  <pre class="mini">{{ it.coordenadas_hora }}</pre>
-  <div class="row-foot">
-    <small>
-      Sesión: {{ it.id_sesion }} • {{ it.fecha_registro }}
-      <span *ngIf="it.area || it.usuario_registro">
-        • Área: {{ it.area || 'N/D' }}
-        • Usuario: {{ it.usuario_registro || 'N/D' }}
-      </span>
-    </small>
-  </div>
-</div>

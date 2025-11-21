@@ -1,240 +1,414 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
-import { FormBuilder, Validators } from '@angular/forms';
-import { Subscription } from 'rxjs';
+import { Component, OnInit } from '@angular/core';
+import { FormBuilder, FormControl, FormGroup, Validators } from '@angular/forms';
+import { SessionService } from '../../core/services/session.service';
+import { LocalizadorService } from '../../core/services/localizador.service';
+import { JdeService, Unidad, Predio, Piloto } from '../../core/services/jde.service';
 
-import { ApiService } from 'src/app/core/services/api.service';
-import { GeolocationService } from 'src/app/core/services/geolocation.service';
-import { SessionService } from 'src/app/core/services/session.service';
-import { CacheService } from 'src/app/core/services/cache.service';
-import { LocalizadorService } from 'src/app/core/services/localizador.service';
-import { JdeService, Unidad, Predio, Piloto } from 'src/app/core/services/jde.service';
-
-type EstadoRuta = 'INICIO_RUTA' | 'DESCANSO_RUTA' | 'DESPERFECTO_RUTA' | 'FIN_TRAYECTO';
-type EstadoRutaOrSin = EstadoRuta | 'SIN_ESTADO';
-
-const CACHE_KEY = 'loclechame_form_localizador_v1';
-const LS_TRANSP = 'loclechame_transportista_code';
+interface LocalInfo {
+  placa_cabezal: string;
+  id_predio: string;
+  nombre_piloto?: string;
+}
 
 @Component({
   selector: 'app-localizador',
   templateUrl: './localizador.component.html',
   styleUrls: ['./localizador.component.scss']
 })
-export class LocalizadorComponent implements OnInit, OnDestroy {
-  private subs = new Subscription();
-
-  // --------- Forms (ajustados a JDE) ---------
-  form = this.fb.group({
-    placa_cabezal: [null as string | null, Validators.required], // código Unidad
-    id_predio: [null as string | null, Validators.required],      // código Predio
-    nombre_piloto: [''],                                          // se llena por API
-    usarJson: [true],
-  });
-
-  // Modal Estado (tuyo)
-  showEstadoModal = false;
-  estadoForm = this.fb.group({
-    estado: ['INICIO_RUTA' as EstadoRuta, Validators.required],
-    notas: ['']
-  });
-
-  // Modal Transportista (nuevo)
-  transportistaForm = this.fb.group({ codigo: ['', Validators.required] });
-  showTransportistaModal = false;
+export class LocalizadorComponent implements OnInit {
+  
+  // ✅ Formularios reactivos
+  form!: FormGroup;
+  transportistaForm!: FormGroup;
+  
+  // ✅ Controles de búsqueda para autocomplete
+  placaSearchCtrl = new FormControl('');
+  predioSearchCtrl = new FormControl('');
+  
+  // ✅ Estados de UI
+  loading = false;
   loadingApis = false;
+  formError: string | null = null;
+  coordenadasHora = '';
+  
+  // ✅ Modal de transportista
+  showTransportistaModal = false;
   codTransportista: string | null = null;
-
-  // Catálogos
+  localInfo: LocalInfo | null = null;
+  
+  // ✅ Datos de geolocalización
+  private coordenadas: { lat: number; lng: number; precision?: number } | null = null;
+  
+  // ✅ Catálogos de JDE
   unidades: Unidad[] = [];
   predios: Predio[] = [];
-  puntos: any[] = [];
-  pendientes: any[] = []; // sin cola offline por ahora
-
-  // UI
-  loading = false;
-
-  estadoRutaLabels: Record<EstadoRutaOrSin, string> = {
-    INICIO_RUTA: 'Inicio de ruta',
-    DESCANSO_RUTA: 'Descanso en ruta',
-    DESPERFECTO_RUTA: 'Desperfecto en ruta',
-    FIN_TRAYECTO: 'Fin de trayecto',
-    SIN_ESTADO: 'Sin estado'
-  };
+  
+  // ✅ Listas filtradas para autocomplete
+  filteredUnidades: Unidad[] = [];
+  filteredPredios: Predio[] = [];
+  
+  // ✅ Control de dropdowns
+  showPlacaDropdown = false;
+  showPredioDropdown = false;
 
   constructor(
     private fb: FormBuilder,
-    private api: ApiService,
-    private geo: GeolocationService,
-    private cache: CacheService,
-    private locSvc: LocalizadorService,
-    private jde: JdeService,
-    public session: SessionService,
+    private sessionService: SessionService,
+    private localizadorService: LocalizadorService,
+    private jdeService: JdeService
   ) {}
 
   ngOnInit(): void {
-    // Restaurar formulario (✅ FIX: fallback requerido)
-    const cached = this.cache.get(CACHE_KEY, null as any);
-    if (cached) this.form.patchValue(cached);
-    this.subs.add(this.form.valueChanges.subscribe(v => this.cache.set(CACHE_KEY, v)));
-
-    // Transportista guardado?
-    const last = localStorage.getItem(LS_TRANSP);
-    if (last) {
-      this.codTransportista = last;
-      this.cargarCatalogosDesdeJDE(last);
-    } else {
-      this.showTransportistaModal = true;
+    this.inicializarFormularios();
+    this.solicitarGeolocalizacion();
+    this.configurarAutocomplete();
+    
+    // ✅ SIEMPRE usar el usuario logueado como transportista
+    const sesion = this.sessionService.get();
+    if (sesion?.id_usuario) {
+      const usuariosLocalizador = ['99570', '186943', '202620'];
+      
+      if (usuariosLocalizador.includes(sesion.id_usuario)) {
+        // ✅ IMPORTANTE: Siempre usar el usuario actual, no el guardado
+        this.codTransportista = sesion.id_usuario;
+        this.transportistaForm.patchValue({ codigo: sesion.id_usuario });
+        
+        // Guardar en localStorage para referencia
+        localStorage.setItem('localizador_transportista', sesion.id_usuario);
+        
+        // Cargar catálogos con el usuario actual
+        this.cargarCatalogos(sesion.id_usuario);
+      }
     }
-
-    // Cambia placa → cargar piloto
-    this.subs.add(
-      this.form.get('placa_cabezal')!.valueChanges.subscribe(val => {
-        if (val) this.cargarPiloto(String(val));
-        else this.form.get('nombre_piloto')!.setValue('');
-      })
-    );
-
-    this.cargarPuntos();
   }
 
-  ngOnDestroy(): void {
-    this.subs.unsubscribe();
+  /**
+   * Inicializa los formularios reactivos
+   */
+  private inicializarFormularios(): void {
+    // Formulario principal
+    this.form = this.fb.group({
+      placa_cabezal: ['', Validators.required],
+      id_predio: [''],
+      nombre_piloto: [''],
+      estado: ['INICIO_RUTA', Validators.required],
+      notas: ['']
+    });
+
+    // Formulario del modal de transportista
+    this.transportistaForm = this.fb.group({
+      codigo: ['', [Validators.required, Validators.minLength(3)]]
+    });
   }
 
-  // ===== Modal Estado (tuyo) =====
-  preGuardar() {
-    if (!this.session?.isActive?.()) {
-      alert('No hay sesión activa.');
+  /**
+   * Configura los listeners para el autocomplete
+   */
+  private configurarAutocomplete(): void {
+    // Filtrado de unidades
+    this.placaSearchCtrl.valueChanges.subscribe(search => {
+      const term = (search || '').toLowerCase().trim();
+      if (!term) {
+        this.filteredUnidades = this.unidades;
+      } else {
+        this.filteredUnidades = this.unidades.filter(u =>
+          u.codigo.toLowerCase().includes(term) ||
+          u.tipo.toLowerCase().includes(term)
+        );
+      }
+    });
+
+    // Filtrado de predios
+    this.predioSearchCtrl.valueChanges.subscribe(search => {
+      const term = (search || '').toLowerCase().trim();
+      if (!term) {
+        this.filteredPredios = this.predios;
+      } else {
+        this.filteredPredios = this.predios.filter(p =>
+          p.codigo.toLowerCase().includes(term) ||
+          p.nombre.toLowerCase().includes(term)
+        );
+      }
+    });
+  }
+
+  /**
+   * Solicita permisos de geolocalización
+   */
+  private solicitarGeolocalizacion(): void {
+    if (!navigator.geolocation) {
+      this.formError = 'Tu navegador no soporta geolocalización';
       return;
     }
-    if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      return;
-    }
-    this.showEstadoModal = true;
-  }
 
-  cancelarEstadoModal() { this.showEstadoModal = false; }
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        this.coordenadas = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          precision: position.coords.accuracy
+        };
 
-  async confirmarEstado() {
-    if (this.estadoForm.invalid) return;
-    this.showEstadoModal = false;
-    const estado = this.estadoForm.value.estado as EstadoRuta;
-    const notas = (this.estadoForm.value.notas || '').trim() || null;
-    await this.guardarPuntoConEstado(estado, notas);
-    this.estadoForm.patchValue({ notas: '' });
-  }
-
-  // ===== Modal Transportista (nuevo) =====
-  abrirModalTransportista() {
-    this.transportistaForm.reset({ codigo: this.codTransportista || '' });
-    this.showTransportistaModal = true;
-  }
-
-  confirmarTransportista() {
-    if (this.transportistaForm.invalid) return;
-    const code = this.transportistaForm.value.codigo!.trim();
-    this.loadingApis = true;
-    this.cargarCatalogosDesdeJDE(code, () => {
-      this.loadingApis = false;
-      this.showTransportistaModal = false;
-      this.codTransportista = code;
-      localStorage.setItem(LS_TRANSP, code);
-    }, () => {
-      this.loadingApis = false;
-      alert('No fue posible cargar catálogos desde JDE. Verifica el código o tu red.');
-    });
-  }
-
-  private cargarCatalogosDesdeJDE(code: string, ok?: () => void, fail?: (e:any)=>void) {
-    const s1 = this.jde.getPrediosPorTransportista(code).subscribe({
-      next: pred => { this.predios = pred; },
-      error: e => fail?.(e)
-    });
-    const s2 = this.jde.getUnidadesPorTransportista(code).subscribe({
-      next: uds => { this.unidades = uds; ok?.(); },
-      error: e => fail?.(e)
-    });
-    this.subs.add(s1); this.subs.add(s2);
-  }
-
-  private cargarPiloto(codigoUnidad: string) {
-    const sub = this.jde.getPilotoPorUnidad(codigoUnidad).subscribe({
-      next: (p: Piloto | null) => {
-        this.form.get('nombre_piloto')!.setValue(p?.staffName || '');
+        const fecha = new Date();
+        this.coordenadasHora = `${this.coordenadas.lat.toFixed(6)}, ${this.coordenadas.lng.toFixed(6)} (${fecha.toLocaleString()})`;
+        
+        console.log('✅ Coordenadas obtenidas:', this.coordenadas);
       },
-      error: () => this.form.get('nombre_piloto')!.setValue('')
-    });
-    this.subs.add(sub);
+      (error) => {
+        console.error('❌ Error geolocalización:', error);
+        this.formError = `Error al obtener ubicación: ${error.message}`;
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      }
+    );
   }
 
-  // ===== Guardado =====
-  private async guardarPuntoConEstado(estado: EstadoRuta, notas: string | null) {
+  // ========== MODAL DE TRANSPORTISTA ==========
+
+  abrirModalTransportista(): void {
+    this.showTransportistaModal = true;
+    
+    // ✅ Si ya hay código de transportista, mostrarlo
+    if (this.codTransportista) {
+      this.transportistaForm.patchValue({ codigo: this.codTransportista });
+    } else {
+      // ✅ Si no hay código, usar el usuario actual de la sesión
+      const sesion = this.sessionService.get();
+      if (sesion?.id_usuario) {
+        this.transportistaForm.patchValue({ codigo: sesion.id_usuario });
+      }
+    }
+  }
+
+  cerrarModalTransportista(): void {
+    this.showTransportistaModal = false;
+  }
+
+  cerrarModalSiClickFuera(event: MouseEvent): void {
+    if ((event.target as HTMLElement).classList.contains('modal-backdrop')) {
+      this.cerrarModalTransportista();
+    }
+  }
+
+  confirmarTransportista(): void {
+    if (this.transportistaForm.invalid) return;
+
+    const sesion = this.sessionService.get();
+    const codigo = this.transportistaForm.value.codigo.trim();
+    
+    // ✅ VALIDACIÓN: Solo permitir el código del usuario actual
+    if (sesion?.id_usuario && codigo !== sesion.id_usuario) {
+      alert(`⚠️ Solo puedes usar tu propio código de transportista: ${sesion.id_usuario}`);
+      this.transportistaForm.patchValue({ codigo: sesion.id_usuario });
+      return;
+    }
+    
+    this.codTransportista = codigo;
+    
+    // Guardar en localStorage
+    localStorage.setItem('localizador_transportista', codigo);
+    
+    this.cerrarModalTransportista();
+    this.cargarCatalogos(codigo);
+  }
+
+  // ========== CATÁLOGOS JDE ==========
+
+  private cargarCatalogos(codTransportista: string): void {
+    this.loadingApis = true;
+    
+    // Limpiar formulario
+    this.form.reset({ estado: 'INICIO_RUTA' });
+    this.placaSearchCtrl.setValue('');
+    this.predioSearchCtrl.setValue('');
+    
+    let completados = 0;
+    const total = 2;
+
+    // Cargar unidades
+    this.jdeService.getUnidadesPorTransportista(codTransportista).subscribe({
+      next: (data) => {
+        this.unidades = data;
+        this.filteredUnidades = data;
+        console.log('✅ Unidades cargadas:', data.length);
+      },
+      error: (err) => {
+        console.error('❌ Error al cargar unidades:', err);
+        alert('Error al cargar unidades de transporte');
+      },
+      complete: () => {
+        completados++;
+        if (completados === total) this.loadingApis = false;
+      }
+    });
+
+    // Cargar predios
+    this.jdeService.getPrediosPorTransportista(codTransportista).subscribe({
+      next: (data) => {
+        this.predios = data;
+        this.filteredPredios = data;
+        console.log('✅ Predios cargados:', data.length);
+      },
+      error: (err) => {
+        console.error('❌ Error al cargar predios:', err);
+      },
+      complete: () => {
+        completados++;
+        if (completados === total) this.loadingApis = false;
+      }
+    });
+  }
+
+  // ========== AUTOCOMPLETE DE PLACA ==========
+
+  onPlacaFocus(): void {
+    this.showPlacaDropdown = true;
+  }
+
+  onPlacaBlur(): void {
+    setTimeout(() => {
+      this.showPlacaDropdown = false;
+    }, 200);
+  }
+
+  selectUnidad(unidad: Unidad): void {
+    this.form.patchValue({ placa_cabezal: unidad.codigo });
+    this.placaSearchCtrl.setValue(`${unidad.codigo} • ${unidad.tipo}`, { emitEvent: false });
+    this.showPlacaDropdown = false;
+    
+    // Buscar piloto para esta unidad
+    this.buscarPiloto(unidad.codigo);
+  }
+
+  private buscarPiloto(codigoUnidad: string): void {
+    this.jdeService.getPilotoPorUnidad(codigoUnidad).subscribe({
+      next: (piloto) => {
+        if (piloto) {
+          this.form.patchValue({ nombre_piloto: piloto.staffName });
+          console.log('✅ Piloto encontrado:', piloto.staffName);
+        } else {
+          this.form.patchValue({ nombre_piloto: '' });
+          console.warn('⚠️ No se encontró piloto');
+        }
+      },
+      error: (err) => {
+        console.error('❌ Error al buscar piloto:', err);
+        this.form.patchValue({ nombre_piloto: '' });
+      }
+    });
+  }
+
+  // ========== AUTOCOMPLETE DE PREDIO ==========
+
+  onPredioFocus(): void {
+    this.showPredioDropdown = true;
+  }
+
+  onPredioBlur(): void {
+    setTimeout(() => {
+      this.showPredioDropdown = false;
+    }, 200);
+  }
+
+  selectPredio(predio: Predio): void {
+    this.form.patchValue({ id_predio: predio.codigo });
+    this.predioSearchCtrl.setValue(`${predio.codigo} • ${predio.nombre}`, { emitEvent: false });
+    this.showPredioDropdown = false;
+  }
+
+  // ========== LOCAL INFO ==========
+
+  limpiarLocalInfo(): void {
+    this.localInfo = null;
+    this.form.reset({ estado: 'INICIO_RUTA' });
+    this.placaSearchCtrl.setValue('');
+    this.predioSearchCtrl.setValue('');
+  }
+
+  // ========== GUARDAR PUNTO ==========
+
+  obtenerCoordenadas(): { lat: number; lng: number; precision?: number } | null {
+    return this.coordenadas;
+  }
+
+  async guardarPuntoDirecto(): Promise<void> {
+    if (!this.form.valid) {
+      this.formError = 'Por favor llena los campos obligatorios (placa cabezal y estado).';
+      return;
+    }
+
+    const coords = this.obtenerCoordenadas();
+    if (!coords) {
+      this.formError = 'No se pudieron obtener las coordenadas. Intenta de nuevo.';
+      return;
+    }
+
+    this.loading = true;
+    this.formError = null;
+
     try {
-      this.loading = true;
+      const sesion = this.sessionService.get();
+      const usuarioActual = sesion?.id_usuario || 'Desconocido';
 
-      // ✅ FIX: usar tu servicio real
-      const pos = await this.geo.getCurrent().catch(() => null);
-      const lat = pos?.lat ?? null;
-      const lng = pos?.lon ?? null;
-      const ts  = pos?.ts  ?? new Date().toISOString();
-
-      const usarJson = !!this.form.value.usarJson;
-      const coordenadas_hora = usarJson
-        ? JSON.stringify({ lat, lng, ts, estado_ruta: estado, notas_ruta: notas || undefined })
-        : `${lat},${lng} @ ${ts}`;
-
-      const idSesion =
-        (this.session as any)?.getIdSesion?.() ||
-        (this.session as any)?.getSession?.()?.id_sesion ||
-        'local';
-
-      const payload: any = {
+      const payload = {
         placa_cabezal: this.form.value.placa_cabezal!,
-        id_predio: this.form.value.id_predio!,         // código de predio JDE
-        nombre_piloto: this.form.value.nombre_piloto || null,
-        coordenadas_hora,
-        estado_ruta: estado,
-        notas_ruta: notas || undefined,
-        lat, lng,
-        id_sesion: idSesion,
+        id_predio: this.form.value.id_predio || '',
+        nombre_piloto: this.form.value.nombre_piloto || '',
+        transportista: this.codTransportista || usuarioActual, // ✅ Código de transportista
+        coordenadas_hora: this.coordenadasHora || '',
+        estado_ruta: this.form.value.estado || 'INICIO_RUTA',
+        notas_ruta: this.form.value.notas || '',
+        lat: coords.lat,
+        lng: coords.lng,
+        precision_metros: coords.precision || null,
+        id_sesion: sesion?.id_sesion || null,
+        usuario_registro: usuarioActual
       };
 
-      this.subs.add(
-        this.locSvc.guardarPunto(payload).subscribe({
-          next: (res) => {
-            if (res?.ok) {
-              const row = res.data ?? payload;
-              this.puntos = [row, ...this.puntos];
-              // limpiar selects (mantengo transportista seleccionado)
-              this.form.patchValue({ placa_cabezal: null, id_predio: null, nombre_piloto: '' });
-            } else {
-              alert(res?.message || 'No se pudo guardar el punto.');
-            }
-          },
-          error: () => alert('Error al guardar el punto.'),
-          complete: () => (this.loading = false),
-        })
-      );
-    } catch (e) {
-      console.error(e);
+      console.log('📤 Enviando punto al backend:', payload);
+
+      this.localizadorService.guardarPunto(payload).subscribe({
+        next: (response) => {
+          console.log('✅ Punto guardado:', response);
+          
+          if (response.ok && response.data?.idLocalizacion) {
+            alert(`✅ Punto guardado correctamente (ID: ${response.data.idLocalizacion})`);
+            
+            // Guardar info local para mantener placa/predio/conductor
+            this.localInfo = {
+              placa_cabezal: this.form.value.placa_cabezal,
+              id_predio: this.form.value.id_predio,
+              nombre_piloto: this.form.value.nombre_piloto
+            };
+            
+            // Solo limpiar notas y resetear estado
+            this.form.patchValue({
+              notas: '',
+              estado: 'INICIO_RUTA'
+            });
+            
+            // Actualizar coordenadas
+            this.solicitarGeolocalizacion();
+          } else {
+            this.formError = response.message || 'Error desconocido al guardar';
+          }
+        },
+        error: (err) => {
+          console.error('❌ Error al guardar punto:', err);
+          this.formError = err?.error?.message || 'Error al guardar el punto';
+        },
+        complete: () => {
+          this.loading = false;
+        }
+      });
+
+    } catch (error) {
+      console.error('❌ Error inesperado:', error);
+      this.formError = 'Error inesperado al preparar el payload';
       this.loading = false;
-      alert('No se pudieron obtener coordenadas.');
     }
-  }
-
-  // ===== Data =====
-  private cargarPuntos() {
-    this.subs.add(
-      this.locSvc.obtenerPuntos().subscribe(res => {
-        if (res?.ok) this.puntos = (res.data as any[]) || [];
-      })
-    );
-  }
-
-  // ===== Helper etiqueta =====
-  get estadoActualLabel(): string {
-    const v = (this.estadoForm.value.estado as EstadoRuta) || 'SIN_ESTADO';
-    return this.estadoRutaLabels[v];
   }
 }

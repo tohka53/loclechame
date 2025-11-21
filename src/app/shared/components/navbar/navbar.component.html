@@ -1,17 +1,41 @@
-<nav class="nav">
-  <!-- Logo o título -->
-  <div class="brand" routerLink="/">📍 Loclechame</div>
+<nav class="navbar">
+  <!-- Logo con icono -->
+<nav class="navbar">
+  <div class="navbar-brand" routerLink="/">
+    <img src="/logohame1.png" alt="Logo HAME" class="brand-logo">
+    <span class="brand-text">Trazabilidad MP</span>
+  </div>
+  <!-- resto del navbar -->
+</nav>
 
   <!-- Botón hamburguesa (solo móvil) -->
-  <button class="menu-toggle" (click)="toggleMenu()">☰</button>
+  <button class="menu-toggle" (click)="toggleMenu()" aria-label="Toggle menu">
+    <span class="hamburger-icon" [class.open]="menuOpen">
+      <span></span>
+      <span></span>
+      <span></span>
+    </span>
+  </button>
 
   <!-- Menú principal -->
-  <div class="links" [class.open]="menuOpen">
-    <a routerLink="/" routerLinkActive="active" (click)="closeMenu()">Dashboard</a>
-    <a routerLink="/lector" routerLinkActive="active" (click)="closeMenu()">Lector</a>
-    <a routerLink="/localizador" routerLinkActive="active" (click)="closeMenu()">Localizador</a>
-    <span class="spacer"></span>
-    <app-session-badge></app-session-badge>
-    <button (click)="finalizar()" *ngIf="session.isActive()">Finalizar sesión</button>
+  <div class="navbar-menu" [class.open]="menuOpen">
+   <!--  <div class="nav-links">
+  
+      <a class="nav-link" routerLink="/lector" routerLinkActive="active" (click)="closeMenu()">
+        <span class="nav-text">Lector</span>
+      </a>
+      
+      <a class="nav-link" routerLink="/localizador" routerLinkActive="active" (click)="closeMenu()">
+        <span class="nav-text">Localizador</span>
+      </a>
+    </div>
+ -->
+    <div class="nav-actions">
+      <app-session-badge></app-session-badge>
+      <button class="btn-logout" (click)="finalizar()" *ngIf="session.isActive()">
+        <span class="logout-icon">🚪</span>
+        <span class="logout-text">Salir</span>
+      </button>
+    </div>
   </div>
 </nav>
